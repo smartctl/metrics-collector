@@ -130,7 +130,6 @@
 
 - query: sum by (cluster_version)(etcd_cluster_version)
   metricName: etcdVersion
-  instant: true
 
 - query: sum(rate(etcd_object_counts{}[5m])) by (resource) > 0
   metricName: etcdObjectCount
@@ -159,7 +158,6 @@
 
 - query: kube_node_role
   metricName: nodeRoles
-  instant: true
 
 - query: sum(kube_node_status_condition{status="true"}) by (condition)
   metricName: nodeStatus
@@ -169,7 +167,6 @@
 
 - query: cluster_version{type="completed"}
   metricName: clusterVersion
-  instant: true
 
 # Golang metrics
 
