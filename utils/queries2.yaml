@@ -1,0 +1,15 @@
+- query: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{apiserver="kube-apiserver", verb!~"WATCH", subresource!="log"}[2m])) by (verb,resource,subresource,instance,le)) > 0
+  metricName: API99thLatency
+
+- query: sum(irate(apiserver_request_total{apiserver="kube-apiserver",verb!="WATCH",subresource!="log"}[2m])) by (verb,instance,resource,code) > 0
+  metricName: APIRequestRate
+
+- query: sum(apiserver_current_inflight_requests{}) by (request_kind) > 0
+  metricName: APIInflightRequests
+
+- query: 'sum(kube_pod_container_resource_requests_cpu_cores{namespace="{namespace}", pod="{app_name}"})'
+  metricName: pod_cpu_requests
+- query: 'sum(kube_pod_container_resource_limits_cpu_cores{namespace="{namespace}", pod="{app_name}"})'
+  metricName: pod_cpu_limits
+- query: 'sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{namespace="{namespace}", pod="{app_name}"})'
+  metricName: pod_cpu_utilization
