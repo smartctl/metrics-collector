@@ -81,8 +81,9 @@ def fetch_data():
                 logger.info(f"Appended data for timestamp {timestamp} to CSV file.")
 
 # Schedule the task to run every 10 seconds (or whatever your desired interval is)
-scheduler.add_job(fetch_data, 'interval', seconds=10)
-logger.info("Scheduled the job to run every 10 seconds.")
+seconds=10
+scheduler.add_job(fetch_data, 'interval', seconds=seconds)
+logger.info("Scheduled the job to run every %.f seconds.", seconds)
 
 # Start the scheduler
 logger.info("Starting the scheduler.")
