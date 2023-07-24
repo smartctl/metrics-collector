@@ -1,0 +1,4 @@
+elasticsearch==7.15.1
+pandas
+requests_aws4auth
+PyYAML
