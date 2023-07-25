@@ -90,10 +90,10 @@ class MetricsFetcher:
             self.scheduler.add_job(self.fetch_data, 'interval', seconds=self.scheduler_interval, args=[namespace])
             self.logger.info(f"Scheduled the job to run every { self.scheduler_interval } seconds.")
             self.fetch_data(namespace)
-        self.scheduler.add_listener(self.my_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
+        self.scheduler.add_listener(self.scheduler_event_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
         self.scheduler.start()
 
-    def my_listener(self, event):
+    def scheduler_event_listener(self, event):
         if event.exception:
             self.logger.error('The job crashed :(')
         else:
