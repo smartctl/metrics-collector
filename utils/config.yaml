@@ -2,6 +2,6 @@ prometheus:
   url: "https://prometheus-k8s-openshift-monitoring.apps.hubztp.telco.ocp.run"
   token: "sha256~fiNsYzfBum-76aC6hS3auH_kNzG3xkYqrSsKXsiY3Lc"
   query_files:
-    - "queries1.yaml"
-    - "queries2.yaml"
-    # - "queries3.yaml"
+    - "promql/queries1.yaml"
+    - "promql/queries2.yaml"
+    - "promql/queries3.yaml"
