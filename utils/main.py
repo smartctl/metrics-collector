@@ -18,17 +18,12 @@ with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
     logger.info("Successfully loaded the config YAML file.")
 
-# Load your YAML file
-with open(config["queries_file"], "r") as f:
-    queries = yaml.safe_load(f)
-    logger.info("Successfully loaded the queries YAML file.")
-
 # Setup APIs
 k8s_api = KubernetesAPI()
 prom_api = PrometheusAPI(config["prometheus"]["url"], config["prometheus"]["token"])
 
 # Start fetching metrics
-fetcher = MetricsFetcher(k8s_api, prom_api, queries, logger, use_apps=True)
+fetcher = MetricsFetcher(k8s_api, prom_api, config["prometheus"]["query_files"], logger)
 fetcher.start()
 
 # Keep the script running
