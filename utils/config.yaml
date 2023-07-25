@@ -1,18 +1,28 @@
 kubernetes:
   # Namespaces to fetch metrics for. Use namespaces: [] to fetch for all namespaces.
-  namespaces: []
-  # namespaces:
-  #   - "namespace1"
-  #   - "openshift-monitoring"
-  #   - "namespace3"
+  # namespaces: []
+  namespaces:
+    - "namespace1"
+    - "openshift-monitoring"
+    - "namespace3"
+
 
 prometheus:
   url: "https://prometheus-k8s-openshift-monitoring.apps.hubztp.telco.ocp.run"
   token: "sha256~fPOME_pdnXs1GKjIQJmG2zaK-SXxgiei7U-5yXuZiak"
-  query_files:
-  - "promql/queries1.yaml"
-  - "promql/queries2.yaml"
-  - "promql/queries3.yaml"
+  query_sets:
+    - name: skills1
+      x_features:
+        - "promql/skills1/queries1.yaml"
+        - "promql/skills1/queries2.yaml"
+      y_labels:
+        - "promql/skills1/labels1.yaml"
+    - name: skills2
+      x_features:
+        - "promql/skills2/queries1.yaml"
+      y_labels:
+        - "promql/skills2/labels1.yaml"
+
 
 scheduler_interval: 100
 use_apps: true
