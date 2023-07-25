@@ -1,5 +1,6 @@
 import yaml
 import logging
+import time
 from services.kubernetes_api import KubernetesAPI
 from services.prometheus_api import PrometheusAPI
 from services.metrics_fetcher import MetricsFetcher
@@ -22,8 +23,13 @@ with open("config.yaml", "r") as f:
 k8s_api = KubernetesAPI()
 prom_api = PrometheusAPI(config["prometheus"]["url"], config["prometheus"]["token"])
 
+# Extract required parameters from config
+scheduler_interval = config.get('scheduler_interval', 100)
+use_apps = config.get('use_apps', False)
+namespaces = config["kubernetes"].get('namespaces', [])
+
 # Start fetching metrics
-fetcher = MetricsFetcher(k8s_api, prom_api, config["prometheus"]["query_files"], logger)
+fetcher = MetricsFetcher(k8s_api, prom_api, config["prometheus"]["query_files"], logger, scheduler_interval, use_apps, namespaces)
 fetcher.start()
 
 # Keep the script running
