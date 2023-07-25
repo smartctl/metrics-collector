@@ -33,7 +33,7 @@ def get_app_names():
     return [i.metadata.name for i in ret.items]
 
 # Load your YAML file
-with open("queries2.yaml", "r") as f:
+with open("queries1.yaml", "r") as f:
     queries = yaml.safe_load(f)
     logger.info("Successfully loaded the YAML file.")
 
@@ -89,12 +89,6 @@ def fetch_data(namespace):
         rows = [[timestamp] + values for timestamp, values in sorted(data.items())]
 
         # Write the data to CSV
-        # with open("metrics.csv", "a", newline="") as f:
-        #     writer = csv.writer(f)
-        #     writer.writerow(["timestamp", "app_name"] + [q["metricName"] for q in queries])
-        #     for row in rows:
-        #         writer.writerow(row)
-        #         logger.info(f"Appended data for timestamp {row[0]} to CSV file.")
         with open("metrics.csv", "a", newline="") as f:
             writer = csv.writer(f)
             if f.tell() == 0:
@@ -109,11 +103,13 @@ scheduler = BackgroundScheduler()
 
 namespace = "openshift-monitoring"  # Substitute with your namespace
 
-scheduler.add_job(fetch_data, 'interval', seconds=10, args=[namespace])
-logger.info("Scheduled the job to run every 10 seconds.")
+seconds=100
+scheduler.add_job(fetch_data, 'interval', seconds=seconds, args=[namespace])
+logger.info(f"Scheduled the job to run every { seconds } seconds.")
 
 # Start the scheduler
 logger.info("Starting the scheduler.")
+fetch_data(namespace)
 scheduler.start()
 
 # Keep the script running
