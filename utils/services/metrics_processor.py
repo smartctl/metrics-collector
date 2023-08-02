@@ -126,15 +126,6 @@ class MetricsProcessor:
         except Exception as e:
             self.logger.error(f"Failed to fetch data for query {metric['expr']} due to {str(e)}")
 
-    def write_to_csv(self, data, csv_file):
-        self.logger.debug(f"Writing data to CSV file {csv_file}.")
-        with open(csv_file, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(data.keys())
-            writer.writerow(data.values())
-            self.logger.info(f"Appended data to CSV file {csv_file}")
-
-
     def save_to_csv(self, skill_name):
         self.logger.debug(f"Saving data to CSV file for {skill_name}.")
         # Create the directory if it doesn't exist
