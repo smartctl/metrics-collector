@@ -126,6 +126,21 @@ class MetricsProcessor:
             if self.csv_data:  # Only write a row of data if there is any
                 writer.writerow(self.csv_data)
 
+    def validate_queries(self, nodes):
+        for skill_name in ["features", "labels"]:
+            for metric in self.query_sets[skill_name]:
+                if metric["type"] == "scalar":
+                    self.fetch_metrics(metric)
+                elif metric["type"].endswith("per_node"):
+                    for node in nodes:
+                        metric["expr"] = metric["expr"].replace("{node}", node)
+                        self.fetch_metrics(metric)
+                elif metric["type"].endswith("per_node_per_attribute"):
+                    for node in nodes:
+                        metric["expr"] = metric["expr"].replace("{node}", node)
+                        self.fetch_metrics(metric)
+
+
     def start(self, nodes):
         self.logger.debug(f"Starting MetricsProcessor with query sets: {self.query_sets}")
         for skill_name in ["features", "labels"]:

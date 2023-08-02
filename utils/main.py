@@ -1,10 +1,16 @@
 import logging
+import argparse
 from services.metrics_processor import MetricsProcessor
 from services.prometheus_api import PrometheusAPI
 from services.kubernetes_api import KubernetesAPI
 from services.config import Config
 
 def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--validate", action="store_true", help="Only validate the Prometheus queries.")
+    args = parser.parse_args()
+
     # Create a logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)  # Set the log level here
@@ -36,8 +42,12 @@ def main():
     # Create the MetricsProcessor
     processor = MetricsProcessor(prom_api, config["prometheus"]["query_sets"], logger)
 
-    # Start the MetricsProcessor
-    processor.start(nodes)
+    if args.validate:
+        # Only validate the Prometheus queries
+        processor.validate_queries(nodes)
+    else:
+        # Start the MetricsProcessor
+        processor.start(nodes)
 
 if __name__ == "__main__":
     main()
