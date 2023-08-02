@@ -173,9 +173,15 @@ class MetricsProcessor:
                     self.logger.error(f"Failed to validate metric {metric['name']} due to {str(e)}")    
 
 
-    def start(self, nodes):
-        self.logger.debug(f"Starting MetricsProcessor with query sets: {self.query_sets}")
-        for skill_name in ["features", "labels"]:
-            self.process_metrics(nodes, skill_name)
-        self.save_to_csv("combined")
-        self.logger.debug("Finished MetricsProcessor.")
+    def start(self, nodes, scheduler_interval=None):
+        while True:
+            self.logger.debug(f"Starting MetricsProcessor with query sets: {self.query_sets}")
+            for skill_name in ["features", "labels"]:
+                self.process_metrics(nodes, skill_name)
+            self.save_to_csv("combined")
+            self.logger.debug("Finished MetricsProcessor.")
+
+            if scheduler_interval is not None:
+                time.sleep(scheduler_interval)
+            else:
+                break
