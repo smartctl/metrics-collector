@@ -13,7 +13,7 @@ def main():
 
     # Create a logger
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)  # Set the log level here
+    logger.setLevel(logging.INFO)  # Set the log level here
 
     # Create console handler with a higher log level
     ch = logging.StreamHandler()

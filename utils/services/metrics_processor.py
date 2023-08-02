@@ -50,6 +50,10 @@ class MetricsProcessor:
                 self.process_per_node_metrics(metric, nodes)
             elif metric["type"].endswith("per_node_per_attribute"):
                 self.process_per_node_per_attribute_metrics(metric, nodes)
+            elif metric["type"] == "boolean":
+                self.process_boolean_metrics(metric)
+            elif metric["type"] == "scalar_per_attribute":
+                self.process_scalar_per_attribute_metrics(metric)
 
 
     def process_per_node_per_attribute_metrics(self, metric, nodes):
@@ -101,6 +105,27 @@ class MetricsProcessor:
             except Exception as e:
                 self.logger.error(f"Failed to fetch data for query {formatted_query} due to {str(e)}")
 
+    def process_boolean_metrics(self, metric):
+        self.logger.debug(f"Processing boolean metrics for {metric['name']}.")
+        try:
+            result = self.prom_api.query(metric["expr"])
+            if result:
+                value = result[0]["value"][1]
+                self.csv_data[metric["name"]] = value
+        except Exception as e:
+            self.logger.error(f"Failed to fetch data for query {metric['expr']} due to {str(e)}")
+
+    def process_scalar_per_attribute_metrics(self, metric):
+        try:
+            result = self.prom_api.query(metric["expr"])
+            if result:
+                for res in result:
+                    attribute = res["metric"].get("attribute", "unknown")
+                    value = res["value"][1]
+                    self.csv_data[f"{metric['name']}_{attribute}"] = value
+        except Exception as e:
+            self.logger.error(f"Failed to fetch data for query {metric['expr']} due to {str(e)}")
+
     def write_to_csv(self, data, csv_file):
         self.logger.debug(f"Writing data to CSV file {csv_file}.")
         with open(csv_file, "w", newline="") as f:
@@ -129,16 +154,23 @@ class MetricsProcessor:
     def validate_queries(self, nodes):
         for skill_name in ["features", "labels"]:
             for metric in self.query_sets[skill_name]:
-                if metric["type"] == "scalar":
-                    self.fetch_metrics(metric)
-                elif metric["type"].endswith("per_node"):
-                    for node in nodes:
-                        metric["expr"] = metric["expr"].replace("{node}", node)
+                try:
+                    if metric["type"] == "scalar":
                         self.fetch_metrics(metric)
-                elif metric["type"].endswith("per_node_per_attribute"):
-                    for node in nodes:
-                        metric["expr"] = metric["expr"].replace("{node}", node)
+                    elif metric["type"].endswith("per_node"):
+                        for node in nodes:
+                            metric["expr"] = metric["expr"].replace("{node}", node)
+                            self.fetch_metrics(metric)
+                    elif metric["type"].endswith("per_node_per_attribute"):
+                        for node in nodes:
+                            metric["expr"] = metric["expr"].replace("{node}", node)
+                            self.fetch_metrics(metric)
+                    elif metric["type"] == "boolean":
                         self.fetch_metrics(metric)
+                    elif metric["type"] == "scalar_per_attribute":
+                        self.fetch_metrics(metric)
+                except Exception as e:
+                    self.logger.error(f"Failed to validate metric {metric['name']} due to {str(e)}")    
 
 
     def start(self, nodes):
