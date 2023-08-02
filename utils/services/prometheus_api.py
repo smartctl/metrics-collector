@@ -1,13 +1,15 @@
 import requests
 import urllib3
 import time
+import logging
 
 class PrometheusAPI:
-    def __init__(self, url, token):
+    def __init__(self, url, token, logger=None):
         self.url = url
         self.token = token
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.headers = {"Authorization": "Bearer " + token}
+        self.logger = logger if logger else logging.getLogger(__name__)
 
     def query(self, query):
         params = {

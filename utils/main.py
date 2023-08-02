@@ -1,5 +1,6 @@
 import logging
 import argparse
+import os
 from services.metrics_processor import MetricsProcessor
 from services.prometheus_api import PrometheusAPI
 from services.kubernetes_api import KubernetesAPI
@@ -13,11 +14,14 @@ def main():
 
     # Create a logger
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)  # Set the log level here
+
+    # Set the log level based on the LOG_LEVEL environment variable
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    logger.setLevel(log_level)
 
     # Create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(log_level)
 
     # Create a formatter and add it to the handlers
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -30,10 +34,10 @@ def main():
     config = Config("config.yaml", logger).config
 
     # Create the Prometheus API client
-    prom_api = PrometheusAPI(config["prometheus"]["url"], config["prometheus"]["token"])
+    prom_api = PrometheusAPI(config["prometheus"]["url"], config["prometheus"]["token"], logger)
 
     # Create the Kubernetes API client
-    k8s_api = KubernetesAPI()
+    k8s_api = KubernetesAPI(logger)
 
     # Get the number of nodes
     node_count = k8s_api.get_node_count()

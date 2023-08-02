@@ -1,12 +1,3 @@
-kubernetes:
-  # Namespaces to fetch metrics for. Use namespaces: [] to fetch for all namespaces.
-  # namespaces: []
-  namespaces:
-    - "namespace1"
-    - "openshift-monitoring"
-    - "namespace3"
-
-
 prometheus:
   url: "https://prometheus-k8s-openshift-monitoring.apps.hubztp.telco.ocp.run"
   token: "sha256~1GAI62XKVfi_eMXnfW7XakIoD9WlpewJYS9lItvzFxU"

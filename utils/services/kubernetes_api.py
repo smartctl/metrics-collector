@@ -1,10 +1,12 @@
 from kubernetes import client, config
+import logging
 
 class KubernetesAPI:
-    def __init__(self):
+    def __init__(self, logger=None):
         config.load_kube_config()
         self.v1 = client.CoreV1Api()
         self.apps_v1 = client.AppsV1Api()
+        self.logger = logger if logger else logging.getLogger(__name__)
 
     def get_pod_names(self, namespace):
         ret = self.v1.list_namespaced_pod(namespace=namespace)
