@@ -19,3 +19,11 @@ class KubernetesAPI:
     def get_all_namespaces(self):
         ret = self.v1.list_namespace()
         return [i.metadata.name for i in ret.items]
+
+    def get_node_count(self):
+        try:
+            nodes = self.v1.list_node()
+            return len(nodes.items)
+        except Exception as e:
+            self.logger.error(f"Failed to fetch node count due to {str(e)}")
+            return None

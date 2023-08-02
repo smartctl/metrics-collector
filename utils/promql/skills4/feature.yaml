@@ -1,0 +1,69 @@
+- name: node_role
+  desc: return node role control-plane, worker, combined (cp+worker)
+  expr: sum(kube_node_role) by (node,role)
+  type: scalar_per_node_per_attribute
+
+- name: total_qty_nodes
+  desc: total number of nodes in cluster
+  expr: count(sum(kube_node_role) by (node))
+  type: scalar
+
+- name: total_nodes_ready
+  desc: total number of nodes in ready state
+  expr: sum(kube_node_status_condition{condition="Ready", status="true"})
+  type: scalar
+
+- name: total_nodes_notready
+  desc: total number of nodes in NotReady state
+  expr: sum(kube_node_status_condition{condition="Ready", status="false"})
+  type: scalar
+
+- name: total_nodes_unknown
+  desc: total number of nodes in unknown state
+  expr: sum(kube_node_status_condition{condition="Ready", status="unknown"})
+  type: scalar
+
+- name: node_status_ready
+  desc: returns 1 if the node is Ready
+  expr: sum(kube_node_status_condition{condition="Ready", status="true"}) by (node)
+  type: boolean_per_node
+
+- name: node_status_diskpressure
+  desc: returns 1 if the node is experiencing DiskPressure
+  expr: sum(kube_node_status_condition{condition="DiskPressure", status="true"}) by (node)
+  type: boolean_per_node
+
+- name: node_load1
+  desc: Floating between 0 and 1 representing the 1 minute load average. See https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load1) by (instance), "node", "$1", "instance", "(.+)")) / 100
+  type: scalar_per_node
+
+- name: node_load5
+  desc: Floating between 0 and 1 representing the 5 minutes load average. See https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load5) by (instance), "node", "$1", "instance", "(.+)")) / 100
+  type: scalar_per_node
+
+- name: node_overcommit_cpu_bool
+  expr: sum(kube_node_status_capacity{resource="cpu"}) by (node) - sum(kube_pod_container_resource_requests{resource="cpu"}) by (node) <= bool 0
+  desc: Return 1 if total CPU requested is higher than the total capacity on the node
+  type: boolean
+
+- name: node_overcommit_memory
+  expr: sum(kube_node_status_capacity{resource="memory"}) by (node) - sum(kube_pod_container_resource_requests{resource="memory"}) by (node) <= bool 0
+  desc: Return 1 if total MEM requested is higher than the total capacity on the node
+  type: boolean
+
+- name: kubelet_operations_99p
+  desc: 99th percentile of the duration of Kublet runtime operations over the past 3 minutes (per node)
+  expr: histogram_quantile(0.99, sum(rate(kubelet_runtime_operations_duration_seconds_bucket{instance=~".*"}[3m])) by (node, operation_type, le))
+  type: scalar_per_node_per_attribute
+
+- name: kubelet_pleg_operations_99p
+  desc: 99th percentile of Pod Lifecycle Event Generator (PLEG) operations. Reflect latency of the container runtime (per node)
+  expr: histogram_quantile(0.99, sum(rate(kubelet_pleg_relist_interval_seconds_bucket{instance=~".*"}[5m])) by (node, le))
+  type: scalar_per_node_per_attribute
+
+- name: apiserver_max_inflight_requests
+  desc: Maximum number of API request over the last 2 minutes
+  expr: sum(cluster:apiserver_current_inflight_requests:sum:max_over_time:2m) by (apiserver)
+  type: scalar_per_attribute

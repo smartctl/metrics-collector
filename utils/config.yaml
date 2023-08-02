@@ -9,20 +9,13 @@ kubernetes:
 
 prometheus:
   url: "https://prometheus-k8s-openshift-monitoring.apps.hubztp.telco.ocp.run"
-  token: "sha256~fPOME_pdnXs1GKjIQJmG2zaK-SXxgiei7U-5yXuZiak"
+  token: "sha256~1GAI62XKVfi_eMXnfW7XakIoD9WlpewJYS9lItvzFxU"
   query_sets:
-    - name: skills1
-      x_features:
-        - "promql/skills1/queries1.yaml"
-        - "promql/skills1/queries2.yaml"
-      y_labels:
-        - "promql/skills1/labels1.yaml"
-    - name: skills2
-      x_features:
-        - "promql/skills2/queries1.yaml"
-      y_labels:
-        - "promql/skills2/labels1.yaml"
+    - name: skills4
+      features:
+        - "promql/skills4/feature.yaml"
+      labels:
+        - "promql/skills4/label.yaml"
 
-
-scheduler_interval: 100
+scheduler_interval: 3
 use_apps: true
