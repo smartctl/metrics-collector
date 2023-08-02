@@ -61,9 +61,7 @@ def main():
         processor.validate_queries(nodes)
     elif scheduler_interval:
         # Run metrics processing on a scheduler
-        while True:
-            processor.start(nodes)
-            time.sleep(scheduler_interval)
+        processor.start(nodes, scheduler_interval)
     else:
         # Run metrics processing only once
         processor.start(nodes)

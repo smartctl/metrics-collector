@@ -9,4 +9,3 @@ prometheus:
         - "promql/skills4/label.yaml"
 
 scheduler_interval: 3
-use_apps: true
