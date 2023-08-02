@@ -134,6 +134,7 @@ class MetricsProcessor:
             writer.writerow(data.values())
             self.logger.info(f"Appended data to CSV file {csv_file}")
 
+
     def save_to_csv(self, skill_name):
         self.logger.debug(f"Saving data to CSV file for {skill_name}.")
         # Create the directory if it doesn't exist
@@ -143,13 +144,22 @@ class MetricsProcessor:
         # Create the filename
         filename = f'metrics_data/metrics_{skill_name}_{self.timestamp}.csv'
 
-        with open(filename, 'w', newline='') as csvfile:
+        # Check if the file already exists
+        file_exists = os.path.exists(filename)
+
+        with open(filename, 'a', newline='') as csvfile:
             fieldnames = self.csv_data.keys()
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-            writer.writeheader()
+            # If the file doesn't exist, write the header
+            if not file_exists:
+                writer.writeheader()
+
+            # Write the row of data
             if self.csv_data:  # Only write a row of data if there is any
                 writer.writerow(self.csv_data)
+
+        self.logger.debug(f"Appended data to CSV file {filename}")
 
     def validate_queries(self, nodes):
         for skill_name in ["features", "labels"]:
