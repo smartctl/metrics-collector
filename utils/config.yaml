@@ -1,6 +1,6 @@
 prometheus:
   url: "https://prometheus-k8s-openshift-monitoring.apps.hubztp.telco.ocp.run"
-  token: "sha256~1GAI62XKVfi_eMXnfW7XakIoD9WlpewJYS9lItvzFxU"
+  token: "sha256~1ZCtprRwqVBHuvdiTkOoeQ-dp3YAHIt_NLhk88wyoWM"
   query_sets:
     - name: skills4
       features:
@@ -8,4 +8,4 @@ prometheus:
       labels:
         - "promql/skills4/label.yaml"
 
-scheduler_interval: 3
+scheduler_interval: 100

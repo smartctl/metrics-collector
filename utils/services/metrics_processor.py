@@ -55,21 +55,29 @@ class MetricsProcessor:
             elif metric["type"] == "scalar_per_attribute":
                 self.process_scalar_per_attribute_metrics(metric)
 
-
     def process_per_node_per_attribute_metrics(self, metric, nodes):
         self.logger.debug(f"Processing per_node_per_attribute metrics for {metric['name']}.")
         for node in nodes:
             try:
                 formatted_query = metric["expr"].replace("{node}", node)
                 result = self.prom_api.query(formatted_query)
-                if result:
-                    for res in result:
-                        attribute = res["metric"].get("attribute", "unknown")
-                        value = res["value"][1]
-                        self.csv_data.setdefault(node, {})[f"{node}_{metric['name']}_{attribute}"] = value
+                for item in result:
+                    # Prepare list to gather all attribute values
+                    attribute_values = []
+                    for attribute, value in item['metric'].items():
+                        # Exclude 'node' attribute because we already consider node in csv_data key
+                        if attribute != 'node':
+                            attribute_values.append(value)
+                    
+                    # Join all attribute values with underscore to create final attribute name
+                    attribute = '_'.join(attribute_values) if attribute_values else 'default'
+                    
+                    value = item['value'][1]
+                    self.csv_data[f"{node}_{metric['name']}_{attribute}"] = value
             except Exception as e:
                 self.logger.error(f"Failed to fetch data for query {formatted_query} due to {str(e)}")
-                continue
+
+
 
     def process_scalar_metrics(self, metric):
         self.logger.debug(f"Processing scalar metrics for {metric['name']}.")

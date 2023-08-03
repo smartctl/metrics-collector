@@ -257,7 +257,7 @@
 - name: kubelet_pleg_operations_99p
   desc: 99th percentile of Pod Lifecycle Event Generator (PLEG) operations. Reflect latency of the container runtime (per node)
   expr: histogram_quantile(0.99, sum(rate(kubelet_pleg_relist_interval_seconds_bucket{instance=~".*"}[5m])) by (node, le))
-  type: scalar_per_node_per_attribute
+  type: scalar_per_node
 
 - name: node_uptime
   expr: sum(label_replace(node_time_seconds - node_boot_time_seconds,"node", "$1", "instance", "(.+)")) by (node)
@@ -377,9 +377,10 @@
   expr: sum(etcd_server_has_leader{job="etcd"})
   type: scalar
 
-# - name: etcd_has_quorum
-#   desc: Return 1 if there is quorum
-#   expr: sum(etcd_server_has_leader{job="etcd"}) == bool 3
+- name: etcd_has_quorum
+  desc: Return 1 if there is quorum
+  expr: sum(etcd_server_has_leader{job="etcd"}) == bool 3
+  type: boolean
 
 - name: etcd_db_size_bytes
   desc: Size of etcd database per pod (needs post preocessing)
