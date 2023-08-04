@@ -77,8 +77,6 @@ class MetricsProcessor:
             except Exception as e:
                 self.logger.error(f"Failed to fetch data for query {formatted_query} due to {str(e)}")
 
-
-
     def process_scalar_metrics(self, metric):
         self.logger.debug(f"Processing scalar metrics for {metric['name']}.")
         try:
@@ -124,11 +122,19 @@ class MetricsProcessor:
             self.logger.error(f"Failed to fetch data for query {metric['expr']} due to {str(e)}")
 
     def process_scalar_per_attribute_metrics(self, metric):
+        self.logger.debug(f"Processing scalar_per_attribute metrics for {metric['name']}.")
         try:
             result = self.prom_api.query(metric["expr"])
             if result:
                 for res in result:
-                    attribute = res["metric"].get("attribute", "unknown")
+                    # Prepare list to gather all attribute values
+                    attribute_values = []
+                    for attribute, value in res['metric'].items():
+                        attribute_values.append(value)
+                    
+                    # Join all attribute values with underscore to create final attribute name
+                    attribute = '_'.join(attribute_values) if attribute_values else 'default'
+                    
                     value = res["value"][1]
                     self.csv_data[f"{metric['name']}_{attribute}"] = value
         except Exception as e:

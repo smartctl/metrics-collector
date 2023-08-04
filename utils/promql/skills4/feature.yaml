@@ -420,7 +420,7 @@
 - name: etcd_failed_proposal
   desc: number of proposal failures of etcd cluster
   expr: rate(etcd_server_proposals_failed_total{job=~".*etcd.*"}[15m])
-  type: scalar_per_attribute
+  type: scalar_per_attribute_multi_column_not_supported
 
 - name: etcd_fsync_duration
   desc: 99th percentile fsync duration/disk latency. A high value indicates disk issues.
