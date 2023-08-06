@@ -1,0 +1,16 @@
+---
+- name: total_qty_nodes
+  desc: total number of nodes in cluster
+  expr: count(sum(kube_node_role) by (node))
+  type: scalar
+
+- name: nodes_roles_per_node
+  desc: number of roles per node
+  expr: sum(kube_node_role) by (node)
+  type: scalar_per_node
+
+- name: node_role
+  desc: return node role control-plane, worker, combined (cp+worker)
+  expr: sum(kube_node_role) by (node,role)
+  type: scalar_per_node_per_attribute
+

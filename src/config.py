@@ -3,9 +3,9 @@ import yaml
 import logging
 
 class Config:
-    def __init__(self, config_file, logger):
+    def __init__(self, config_file, logger=None):
         self.config_file = config_file
-        self.logger = logger
+        self.logger = logger if logger else logging.getLogger(__name__)
         self.config = self.load_config()
 
     def load_config(self):

@@ -1,0 +1,543 @@
+---
+- name: node_role
+  desc: return node role control-plane, worker, combined (cp+worker)
+  expr: sum(kube_node_role) by (node,role)
+  type: scalar_per_node_per_attribute
+
+- name: nodes_roles_per_node
+  desc: number of roles per node
+  expr: sum(kube_node_role) by (node)
+  type: scalar_per_node
+
+- name: total_qty_nodes
+  desc: total number of nodes in cluster
+  expr: count(sum(kube_node_role) by (node))
+  type: scalar
+
+- name: total_qty_control_plane
+  desc: total number of control plane nodes
+  expr: count(sum(kube_node_role{role=~"master|control-plane"}) by (node))
+  type: scalar
+
+- name: total_qty_workers
+  desc: total number of workers that are not control-plane
+  expr: count(sum(kube_node_role{role="worker"}) by (node)) - count((sum(kube_node_role{role="control-plane"}) by (node)))
+  type: scalar
+
+- name: cluster_magic_split
+  desc: number of 3 nodes groups of worker nodes not control-plane (magic number for aggregating workers)
+  expr: |
+    (
+      count(sum(kube_node_role{role="worker"}) by (node)) 
+      - count((sum(kube_node_role{role="control-plane"}) by (node)))
+    ) / 3 > 0 or vector(0)
+  type: scalar
+
+- name: total_nodes_ready
+  desc: total number of nodes in ready state
+  expr: sum(kube_node_status_condition{condition="Ready", status="true"})
+  type: scalar
+
+- name: total_nodes_notready
+  desc: total number of nodes in NotReady state
+  expr: sum(kube_node_status_condition{condition="Ready", status="false"})
+  type: scalar
+
+- name: total_nodes_unknown
+  desc: total number of nodes in unknown state
+  expr: sum(kube_node_status_condition{condition="Ready", status="unknown"})
+  type: scalar
+
+- name: total_nodes_diskpressure
+  desc: total number of nodes experiencing DiskPressure
+  expr: sum(kube_node_status_condition{condition="DiskPressure", status="true"})
+  type: scalar
+
+- name: total_node_memorypressure
+  desc: total number of nodes experiencing MemoryPressure
+  expr: sum(kube_node_status_condition{condition="MemoryPressure", status="true"}) 
+  type: scalar
+
+- name: total_node_pidpressure
+  desc: total number of nodes experiencing PIDPressure
+  expr: sum(kube_node_status_condition{condition="PIDPressure", status="true"})
+  type: scalar
+
+- name: node_status_ready
+  desc: returns 1 if the node is Ready
+  expr: sum(kube_node_status_condition{condition="Ready", status="true"}) by (node)
+  type: boolean_per_node
+
+- name: node_status_diskpressure
+  desc: returns 1 if the node is experiencing DiskPressure
+  expr: sum(kube_node_status_condition{condition="DiskPressure", status="true"}) by (node)
+  type: boolean_per_node
+
+- name: node_status_memorypressure
+  desc: returns 1 if the node is experiencing MemoryPressure
+  expr: sum(kube_node_status_condition{condition="MemoryPressure", status="true"}) by (node)
+  type: boolean_per_node
+
+- name: node_status_pidpressure
+  desc: returns 1 if the node is experiencing PIDPressure
+  expr: sum(kube_node_status_condition{condition="PIDPressure", status="true"}) by (node)
+  type: boolean_per_node
+
+- name: node_load1
+  desc: Floating between 0 and 1 representing the 1 minute load average. See https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load1) by (instance), "node", "$1", "instance", "(.+)")) / 100
+  type: scalar_per_node
+
+- name: node_load5
+  desc: Floating between 0 and 1 representing the 5 minutes load average. See https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load5) by (instance), "node", "$1", "instance", "(.+)")) / 100
+  type: scalar_per_node
+
+- name: node_load15
+  desc: Floating between 0 and 1 representing the 15 minutes load average. See https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load15) by (instance), "node", "$1", "instance", "(.+)")) / 100
+  type: scalar_per_node
+
+- name: node_pod_qos_mem_burstable
+  expr: sum(container_memory_working_set_bytes{container!~"POD|",id=~".*burstable.*"}) by (node)
+  desc: memory allocated for burstable Pods
+  type: scalar_per_node
+
+- name: node_pod_qos_qty_burstable
+  expr: count(container_memory_working_set_bytes{container!~"POD|",id=~".*burstable.*"}) by (node)
+  desc: number of pods using burstable QoS per node
+  type: scalar_per_node
+
+- name: node_pod_qos_cpu_burstable
+  expr: sum(container_cpu_usage_seconds_total{container!~"POD|",id=~".*burstable.*"} ) by (node)
+  desc: cpus allocated for burstable Pods
+  type: scalar_per_node
+
+- name: node_pod_qos_mem_besteffort
+  expr: sum(container_memory_working_set_bytes{container!~"POD|",id=~".*besteffort.*"}) by (node)
+  desc: mem allocated for besteffort Pods
+  type: scalar_per_node
+
+- name: node_pod_qos_qty_besteffort
+  expr: count(container_memory_working_set_bytes{container!~"POD|",id=~".*besteffort.*"}) by (node)
+  desc: number of pods using besteffort QoS per node
+  type: scalar_per_node  
+
+- name: node_pod_qos_cpu_besteffort
+  expr: sum(container_cpu_usage_seconds_total{container!~"POD|",id=~".*besteffort.*"} ) by (node)
+  desc: cpus allocated for besteffort Pods
+  type: scalar_per_node
+
+- name: node_pod_qos_mem_guaranteed
+  expr: sum(container_memory_working_set_bytes{container!~"POD|",id=~".*kubepods-pod.*"}) by (node)
+  desc: mem allocated for guaranteed Pods
+  type: scalar_per_node
+
+- name: node_pod_qos_qty_guaranteed
+  expr: count(container_memory_working_set_bytes{container!~"POD|",id=~".*kubepods-pod.*"}) by (node)
+  desc: number of pods using guaranteed QoS per node
+  type: scalar_per_node
+
+- name: node_pod_qos_cpu_guaranteed
+  expr: sum(container_cpu_usage_seconds_total{container!~"POD|",id=~".*kubepods-pod.*"} ) by (node)
+  desc: cpu allocated for guaranteed Pods
+  type: scalar_per_node
+
+- name: node_allocatable
+  expr: sum by (node,resource) (kube_node_status_allocatable)
+  desc: allocatable resources per type
+  type: scalar_per_node_per_attribute
+
+- name: node_pod_container_resource_requests_cpu
+  expr: sum(kube_pod_container_resource_requests{resource="cpu"}) by (node)
+  desc: total CPU request per node
+  type: scalar_per_node
+
+- name: node_pod_container_resource_requests_memory
+  expr: sum(kube_pod_container_resource_requests{resource="memory"}) by (node)
+  desc: total MEM request per node
+  type: scalar_per_node
+
+- name: node_pod_container_resource_requests_hugepages_1Gi
+  expr: sum(kube_pod_container_resource_requests{resource="hugepages_1Gi"}) by (node)
+  desc: total HugePages 1Gi request per node
+  type: scalar_per_node
+
+- name: node_pod_container_resource_requests_hugepages_2Mi
+  expr: sum(kube_pod_container_resource_requests{resource="hugepages_2Mi"}) by (node)
+  desc: total HugePages 2Mi request per node
+  type: scalar_per_node
+
+- name: node_pod_container_resource_limit_cpu
+  expr: sum(kube_pod_container_resource_limits{resource="cpu"}) by (node)
+  desc: total CPU resource limit per node
+  type: scalar_per_node
+
+- name: node_pod_container_resource_limit_memory
+  expr: sum(kube_pod_container_resource_limit{resource="memory"}) by (node)
+  desc: total MEM resource limit per node
+  type: scalar_per_node
+
+- name: node_pod_container_resource_limit_hugepages_1Gi
+  expr: sum(kube_pod_container_resource_limit{resource="hugepages_1Gi"}) by (node)
+  desc: total HugePages 1Gi resource limit per node 
+  type: scalar_per_node
+
+- name: node_pod_container_resource_limit_hugepages_2Mi
+  expr: sum(kube_pod_container_resource_limit{resource="hugepages_2Mi"}) by (node)
+  desc: total HugePages 2Mi resource limit per node 
+  type: scalar_per_node
+
+- name: node_pod_total
+  expr: sum(kubelet_running_pods) by (node)
+  desc: num of Pod per node
+  type: scalar_per_node
+
+- name: node_container_total
+  expr: sum(kubelet_running_containers{container_state="running"}) by (node)
+  desc: num of Container per node
+  type: scalar_per_node
+
+- name: node_capacity_cpu
+  expr: sum(kube_node_status_capacity{resource="cpu"}) by (node)
+  desc: total CPU capacity per node
+  type: scalar_per_node
+
+- name: node_capacity_memory
+  expr: sum(kube_node_status_capacity{resource="memory"}) by (node)
+  desc: total MEM capacity (per node) similar to sum(node_memory_MemTotal_bytes ) by (instance)
+  type: scalar_per_node
+
+- name: node_capacity_pods
+  expr: sum(kube_node_status_capacity{resource="pods"}) by (node)
+  desc: Max Pods capacity per node
+  type: scalar_per_node
+
+- name: node_capacity_ephemeral_storage
+  expr: sum(kube_node_status_capacity{resource="ephemeral_storage"}) by (node)
+  desc: total ephemeral storage capacity per node
+  type: scalar_per_node
+
+- name: node_capacity_hugepages_1Gi
+  expr: sum(kube_node_status_capacity{resource="hugepages_1Gi"}) by (node)
+  desc: total HugePages 1Gi capacity per node
+  type: scalar_per_node
+
+- name: node_capacity_hugepages_2Mi
+  expr: sum(kube_node_status_capacity{resource="hugepages_2Mi"}) by (node)
+  desc: total HugePages 2Mi capacity per node
+  type: scalar_per_node
+
+- name: node_overcommit_cpu_bool
+  expr: sum(kube_node_status_capacity{resource="cpu"}) by (node) - sum(kube_pod_container_resource_requests{resource="cpu"}) by (node) <= bool 0
+  desc: Return 1 if total CPU requested is higher than the total capacity on the node
+  type: boolean
+
+- name: node_overcommit_memory
+  expr: sum(kube_node_status_capacity{resource="memory"}) by (node) - sum(kube_pod_container_resource_requests{resource="memory"}) by (node) <= bool 0
+  desc: Return 1 if total MEM requested is higher than the total capacity on the node
+  type: boolean
+
+- name: node_cpu_utilization_p
+  expr: |
+    1 - ((sum(kube_node_status_capacity{resource="cpu"}) by (node) 
+    - sum(kube_pod_container_resource_requests{resource="cpu"}) by (node)) 
+    /  sum(kube_node_status_capacity{resource="cpu"}) by (node))
+  desc: return CPU utilization (percentage as float 0 - 1)
+  type: scalar_per_node
+
+- name: node_memory_utilization_p
+  expr: |
+    1 - ((sum(kube_node_status_capacity{resource="memory"}) by (node) 
+    - sum(kube_pod_container_resource_requests{resource="memory"}) by (node)) 
+    /  sum(kube_node_status_capacity{resource="memory"}) by (node))
+  desc: return MEM utilization (percentage as float 0 - 1)
+  type: scalar_per_node
+
+- name: node_pod_system_cluster_critical
+  desc: number of pod with priority class syste-cluster-critical (per node)
+  expr: sum by (node) (kube_pod_info{priority_class="system-cluster-critical"})
+  type: scalar_per_node
+
+- name: node_pod_system_node_critical
+  desc: number of pod with priority class syste-node-critical (per node)
+  expr: sum by (node) (kube_pod_info{priority_class="system-node-critical"})
+  type: scalar_per_node
+
+- name: node_pod_openshift_user_critical
+  desc: number of pod with priority class syste-node-critical (per node)
+  expr: sum by (node) (kube_pod_info{priority_class="openshift-user-critical"})
+  type: scalar_per_node
+
+- name: kubelet_health_failures
+  desc: Number of Kubelet health failures
+  expr: sum(mcd_kubelet_state) by (node)
+  type: scalar_per_node
+
+- name: kubelet_operations_99p
+  desc: 99th percentile of the duration of Kublet runtime operations over the past 3 minutes (per node)
+  expr: histogram_quantile(0.99, sum(rate(kubelet_runtime_operations_duration_seconds_bucket{instance=~".*"}[3m])) by (node, operation_type, le))
+  type: scalar_per_node_per_attribute
+
+- name: kubelet_pleg_operations_99p
+  desc: 99th percentile of Pod Lifecycle Event Generator (PLEG) operations. Reflect latency of the container runtime (per node)
+  expr: histogram_quantile(0.99, sum(rate(kubelet_pleg_relist_interval_seconds_bucket{instance=~".*"}[5m])) by (node, le))
+  type: scalar_per_node_per_attribute
+
+- name: node_uptime
+  expr: sum(label_replace(node_time_seconds - node_boot_time_seconds,"node", "$1", "instance", "(.+)")) by (node)
+  desc: Unix timestamp in seconds with node uptime
+  type: scalar_per_node
+
+- name: disk_write_latency
+  expr: |
+    sum(label_replace( sum (rate(node_disk_write_time_seconds_total[5m]) 
+    / rate(node_disk_writes_completed_total[5m]) ) by (instance,device),  "node", "$1", "instance", "(.+)") > 0) by (node, device)
+  desc: Write latency in seconds per device (per node)
+  type: scalar_per_node_per_attribute
+  
+- name: disk_read_latency
+  expr: |
+    sum(label_replace( sum (rate(node_disk_read_time_seconds_total[5m]) 
+    / rate(node_disk_reads_completed_total[5m]) ) by (instance,device),  "node", "$1", "instance", "(.+)") > 0) by (node, device)
+  desc: read latency in seconds per device (per node)
+  type: scalar_per_node_per_attribute
+
+- name: disk_saturation
+  desc: Disk saturation (disk IO Time Weighted) in seconds (per node)
+  expr: |
+    sum (label_replace(
+      ( instance_device:node_disk_io_time_weighted_seconds:rate1m{job="node-exporter", cluster=""}
+      / scalar(count(instance_device:node_disk_io_time_weighted_seconds:rate1m{job="node-exporter", cluster=""}))
+      ),  "node", "$1", "instance", "(.+)") 
+    ) by (node, device)
+  type: scalar_per_node_per_attribute
+  
+- name: total_node_net_receive_bytes
+  desc: network throughput inbound to the node in bytes
+  expr: |
+    sum(label_replace(instance:node_network_receive_bytes_excluding_lo:rate1m,"node","$1","instance", "(.+)") ) by (node)
+  type: scalar_per_node
+
+- name: total_node_net_transmit_bytes
+  desc: network throughput outbound from the node
+  expr: |
+    sum(label_replace(instance:node_network_transmit_bytes_excluding_lo:rate1m,"node","$1","instance", "(.+)") ) by (node)
+  type: scalar_per_node
+
+- name: apiserver_errors
+  desc: api server errors
+  expr: |
+    label_replace(
+      sum(rate(apiserver_request_total{job="apiserver",verb=~"LIST|GET",code=~"5.."}[1d]))
+    / scalar(sum(rate(apiserver_request_total{job="apiserver",verb=~"LIST|GET"}[1d])))
+    , "type", "apiserver_errors", "_none_", "")
+  type: scalar
+
+- name: apiserver_latency_resource
+  desc: resource-scoped latency https://github.com/openshift/runbooks/blob/master/alerts/cluster-kube-apiserver-operator/KubeAPIErrorBudgetBurn.md
+  expr: |
+    label_replace(
+    (
+      sum(rate(apiserver_request_duration_seconds_count{job="apiserver",verb=~"LIST|GET",subresource!~"proxy|log|exec",scope="resource"}[1d]))
+    -
+      (sum(rate(apiserver_request_duration_seconds_bucket{job="apiserver",verb=~"LIST|GET",subresource!~"proxy|log|exec",scope="resource",le="0.1"}[1d])) or vector(0))
+    ) / scalar(sum(rate(apiserver_request_total{job="apiserver",verb=~"LIST|GET",subresource!~"proxy|log|exec"}[1d]))),
+    "type", "apiserver_latency_resource", "_none_", "")
+  type: scalar
+
+- name: apiserver_latency_cluster
+  desc: cluster-scope latency https://github.com/openshift/runbooks/blob/master/alerts/cluster-kube-apiserver-operator/KubeAPIErrorBudgetBurn.md
+  expr: |
+    label_replace(
+      (
+        sum(rate(apiserver_request_duration_seconds_count{job="apiserver",verb=~"LIST|GET",scope="cluster"}[1d]))
+        - sum(rate(apiserver_request_duration_seconds_bucket{job="apiserver",verb=~"LIST|GET",scope="cluster",le="5"}[1d]))
+      ) / scalar(sum(rate(apiserver_request_total{job="apiserver",verb=~"LIST|GET"}[1d]))), 
+      "type", "apiserver_latency_cluster", "_none_", "")
+  type: scalar
+
+- name: apiserver_requests_duration_seconds
+  desc: 99th percentile latency per read or write request
+  expr: |
+    histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{apiserver="kube-apiserver",subresource!="log",verb!~"WATCH|WATCHLIST|PROXY"}[5m])) by(verb,le))
+  type: scalar_per_attribute
+
+- name: apiserver_memory_usage
+  desc: Memory usage of APIServer (per node)
+  expr: sum(container_memory_usage_bytes{container="kube-apiserver"}) by (node)
+  type: scalar_per_node
+
+- name: openshift_apiserver_memory_usage
+  desc: Memory usage of OCP APIServer (per node)
+  expr: sum(container_memory_usage_bytes{container="openshift-apiserver"}) by (node)
+  type: scalar_per_node
+
+- name: apiserver_max_inflight_requests
+  desc: Maximum number of API request over the last 2 minutes
+  expr: sum(cluster:apiserver_current_inflight_requests:sum:max_over_time:2m) by (apiserver)
+  type: scalar_per_attribute
+
+- name: apiserver_request_read_total
+  desc: total number of read requests per second
+  expr: sum(rate(apiserver_request_total{apiserver="kube-apiserver",verb=~"LIST|GET"}[5m]))
+  type: scalar
+
+- name: apiserver_request_write_total
+  desc: total number of write requests per second
+  expr: sum(rate(apiserver_request_total{apiserver="kube-apiserver",verb=~"POST|PUT|PATCH|UPDATE|DELETE"}[5m]))
+  type: scalar
+
+- name: cluster_pod_total
+  desc: total num of pods in cluster
+  expr: sum(kube_pod_info)
+  type: scalar
+
+- name: cluster_namespace_total
+  desc: total number of namespaces in cluster
+  expr: count(sum by (namespace) (kube_pod_info))
+  type: scalar
+
+- name: cluster_control_plane_utilization
+  desc: control-plane utilization
+  expr: |
+    (
+    1 - sum(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes and on (instance) 
+    label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.+)"))
+    / 
+    sum(node_memory_MemTotal_bytes and on (instance) 
+    label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.+)"))
+    )
+  type: scalar
+
+- name: etcd_member_active
+  desc: number of active etcd member
+  expr: sum(etcd_server_has_leader{job="etcd"})
+  type: scalar
+
+- name: etcd_has_quorum
+  desc: Return 1 if there is quorum
+  expr: sum(etcd_server_has_leader{job="etcd"}) == bool 3
+  type: boolean
+
+- name: etcd_db_size_bytes
+  desc: Size of etcd database per pod 
+  expr: sum(etcd_mvcc_db_total_size_in_bytes{job="etcd"}) by (pod) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info))
+  type: scalar_per_node
+
+- name: etcd_db_use_bytes
+  desc: etcd use size of etcd database per pod
+  expr: sum by (pod) (etcd_mvcc_db_total_size_in_use_in_bytes) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info))
+  type: scalar_per_node
+
+- name: etcd_object_counts
+  desc: objects per etcd instance (needs post processing)
+  expr: sum(apiserver_storage_objects{job="apiserver"}) by (instance)
+  type: scalar_per_attribute
+
+- name: etcd_network_peer_rtt
+  desc: Peer RTT (needs post processing)
+  expr: |
+    sum by(instance) (
+      instance:etcd_network_peer_round_trip_time_seconds:histogram_quantile{quantile="0.99"}
+    )
+  type: scalar_per_attribute
+  
+- name: etcd_member_down_total
+  desc: total number of etcd members
+  expr: |
+    sum (
+          sum without (instance) (up{job=~".*etcd.*"} == bool 0)
+        or
+          count without (To) (
+            sum without (instance) (rate(etcd_network_peer_sent_failures_total{job=~".*etcd.*"}[120s])) > 0.01
+          )
+        )
+  type: scalar
+
+- name: etcd_failed_proposal
+  desc: number of proposal failures of etcd cluster
+  expr: sum by (pod) (rate(etcd_server_proposals_failed_total{job=~".*etcd.*"}[15m]))
+  type: scalar_per_attribute
+
+- name: etcd_fsync_duration
+  desc: 99th percentile fsync duration/disk latency. A high value indicates disk issues.
+  expr: sum by (instance) (histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{job=~".*etcd.*"}[5m])))
+  type: scalar_per_attribute
+
+- name: etcd_qty_grpc_requests_slow
+  desc: Number of 99th peercentile with > 1 second respond time
+  expr: |
+    count(histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{job="etcd", grpc_method!="Defragment",grpc_type="unary"}[10m])) without(grpc_type)) > 1) or vector(0)
+  type: scalar
+
+- name: etcd_high_failed_grpc_requests
+  desc: Number of high number of etcd failed grpc requests
+  expr: |
+    (
+      sum(rate(grpc_server_handled_total{job="etcd", 
+            grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m]))
+      /
+      sum(rate(grpc_server_handled_total{job="etcd"}[5m]))
+    )
+  type: scalar
+
+- name: etcd_number_leader_changes
+  desc: number of etcd cluster leader changes
+  expr: avg(changes(etcd_server_is_leader[10m]))
+  type: scalar
+
+- name: workqueue_queue_waiting_time_total
+  desc: The total time that action items have spent waiting in each of the controller manager’s work queues.
+  expr: histogram_quantile(0.99, sum by(le) (rate(workqueue_queue_duration_seconds_bucket[5m])))
+  type: scalar
+
+- name: workqueue_queue_work_time_total
+  desc: The total time that has been taken to process action items from each of the controller manager’s work queues.
+  expr: histogram_quantile(0.99, sum by(le) (rate(workqueue_work_duration_seconds_bucket[5m])))
+  type: scalar
+
+- name: workqueue_queue_work_time_gt_1second
+  desc: Total queques with latency > 1 second
+  expr: count(histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="kube-controller-manager"}[5m])) by (name, le)) > 1)
+  type: scalar
+
+- name: workqueue_retries_rate
+  desc: number of queues with per-second average rate of retries > 3 per second
+  expr: count(sum(rate(workqueue_retries_total{job="kube-controller-manager"}[5m]) > 3) by (name)) or vector(0)
+  type: scalar
+
+- name: node_pod_lt_10mbps
+  desc: number of pods with < 10 Mbps (per node)
+  expr: count(sum(irate(container_network_receive_bytes_total[1h:5m])) by (node,pod) < 1250000) by (node)
+  type: scalar_per_node
+
+- name: node_pod_10_to_15mbps
+  desc: number of pods with >= 10 Mbps and < 15 Mbps (per node)
+  expr: count(sum(irate(container_network_receive_bytes_total[1h:5m])) by (node,pod) >= 1250000 < 1875000) by (node)
+  type: scalar_per_node
+
+- name: node_pod_15_to_20mbps
+  desc: nnumber of pods with >= 15 Mbps and < 20 Mbps (per node)
+  expr: count(sum(irate(container_network_receive_bytes_total[1h:5m])) by (node,pod) >= 1875000 < 2500000) by (node)
+  type: scalar_per_node
+
+- name: node_pod_20_to_30mbps
+  desc: nnumber of pods with >= 20 Mbps and < 30 Mbps (per node)
+  expr: count(sum(irate(container_network_receive_bytes_total[1h:5m])) by (node,pod) >= 2500000 < 3750000) by (node)
+  type: scalar_per_node
+
+- name: node_pod_30_to_50mbps
+  desc: nnumber of pods with >= 30 Mbps and < 50 Mbps (per node)
+  expr: count(sum(irate(container_network_receive_bytes_total[1h:5m])) by (node,pod) >= 3750000 < 6250000) by (node)
+  type: scalar_per_node
+
+- name: node_pod_ge_50mbps
+  desc: number of pods with >= 50 Mbps (per node)
+  expr: count(sum(irate(container_network_receive_bytes_total[1h:5m])) by (node,pod) >= 6250000) by (node)
+  type: scalar_per_node
+
+- name: node_pod_crashloopbackoff
+  desc: number of Pods in CraqshLoopBackOff
+  expr: count(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1) or vector(0)
+  type: scalar
