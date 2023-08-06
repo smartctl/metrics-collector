@@ -12,6 +12,9 @@ python3 -m venv venv
 # Activate the virtual environment
 source ./venv/bin/activate
 
+# Upgrade pip to the latest within the virtual environment
+pip install --upgrade pip
+
 # Install Python libraries in virtual environment
 pip install -r requirements.txt
 ```
