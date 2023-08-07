@@ -1,7 +1,7 @@
 import logging
 import argparse
 import os
-import time
+import sys
 from src.metrics_processor import MetricsProcessor
 from src.prometheus_api import PrometheusAPI
 from src.config import Config
@@ -11,6 +11,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--validate", action="store_true", help="Only validate the Prometheus queries.")
+    parser.add_argument("--config", help="Config file to use. (default config.yaml)")
     parser.add_argument("--collector_interval", type=int, help="Interval in seconds for metrics processing on a scheduler, not applicable with --validate")
     args = parser.parse_args()
 
@@ -33,7 +34,10 @@ def main():
     logger.addHandler(ch)
 
     # Load the general config
-    config = Config("config.yaml", logger).config
+    if args.config:
+        config = Config(args.config, logger).config
+    else:
+        config = Config("config.yaml", logger).config
 
     # Read the collector_interval from config.yaml
     collector_interval = config["collector"]["interval"]
@@ -50,12 +54,14 @@ def main():
     if args.validate:
         # Only validate the Prometheus queries
         processor.validate_queries()
-    elif collector_interval:
-        # Run metrics processing on a scheduler
-        processor.start(collector_interval)
     else:
-        # Run metrics processing only once
-        processor.start()
+        # Run metrics processing on a scheduler
+        # if collector_interval = 0 then run metrics processing only once
+        try:
+            processor.start(collector_interval)
+        except KeyboardInterrupt:
+            logger.info(f"CTRL + C (SIGINT) detected. Shutting down...")
+            sys.exit(0)
 
 if __name__ == "__main__":
     main()

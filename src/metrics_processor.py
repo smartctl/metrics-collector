@@ -225,6 +225,7 @@ class MetricsProcessor:
             self.logger.info("Processing completed for the current cycle.")
             self.logger.info(f"Next interval begins in {scheduler_interval} seconds, waiting for the next cycle.")
             if (scheduler_interval == 0):
+                # When interval == 0 then run only once
                 break
             else:
                 time.sleep(scheduler_interval)
