@@ -96,6 +96,8 @@ class MetricsProcessor:
                 node_name = self.get_node_map(item['metric']['node'])
                 attribute_values = []
                 for attribute, value in item['metric'].items():
+                    if attribute == "":
+                            continue
                     # Exclude 'node' attribute because we already consider node in row_data key
                     if attribute != 'node':
                         value = value.replace('-','_').replace('.','_')
@@ -124,6 +126,8 @@ class MetricsProcessor:
         try:
             result = self.prom_api.query(metric['expr'])
             for item in result:
+                if item['metric']['node'] == "":
+                    continue
                 self.row_data[f"{self.get_node_map(item['metric']['node'])}_{metric['name']}"] = item['value'][1]
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for {metric['name']} with query {metric['expr']} due to {str(e)}")
@@ -133,6 +137,8 @@ class MetricsProcessor:
         try:
             result = self.prom_api.query(metric['expr'])
             for item in result:
+                if item['metric']['node'] == "":
+                    continue
                 node_name = self.get_node_map(item['metric']['node'])
                 metric_name = metric['name']
                 value = result[0]["value"][1]
@@ -159,6 +165,8 @@ class MetricsProcessor:
                     # Prepare list to gather all attribute values
                     attribute_values = []
                     for attribute, value in res['metric'].items():
+                        if attribute == "":
+                            continue
                         if attribute == 'instance':
                             value=value.split(":")[0]
                         value = value.replace('-','_').replace('.','_')

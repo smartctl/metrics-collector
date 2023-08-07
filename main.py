@@ -4,7 +4,6 @@ import os
 import time
 from src.metrics_processor import MetricsProcessor
 from src.prometheus_api import PrometheusAPI
-from src.kubernetes_api import KubernetesAPI
 from src.config import Config
 
 
