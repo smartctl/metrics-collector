@@ -1,0 +1,298 @@
+- name: yy_kubelet_healthstate
+  expr: sum by (node) (mcd_kubelet_state) > bool 2
+  desc: Returns 1 if 2 or more failures occur
+  type: boolean_per_node
+  label: yellow
+
+- name: yy_kubelet_healthstate_critical
+  expr: sum by (node) (mcd_kubelet_state) > bool 5
+  desc: Returns 1 if 5 or more failures occur
+  type: boolean_per_node
+  label: red
+
+- name: yy_kubelet_healthstate_critical_fatal
+  expr: sum by (node) (mcd_kubelet_state) > bool 10
+  desc: Returns 1 if 10 or more failures occur
+  type: boolean_per_node
+  label: red_fatal
+
+- name: yy_mem_used_gt_mem_reserved_95p
+  desc: Return 1 if system exceeds reservations
+  expr: |
+    (
+        sum by (node) (container_memory_rss{id="/system.slice"}) 
+    ) - ((
+        sum by (node) (kube_node_status_capacity{resource="memory"} - kube_node_status_allocatable{resource="memory"})
+    ) * 0.95) > bool 0
+  type: boolean_per_node
+  label: red
+
+- name: yy_mem_utilization_high
+  desc: Return 1 if node mem utilization above 60%
+  expr: |
+    (
+      1 - ((sum(kube_node_status_capacity{resource="memory"}) by (node) 
+      - sum(kube_pod_container_resource_requests{resource="memory"}) by (node)) 
+      /  sum(kube_node_status_capacity{resource="memory"}) by (node)) > bool .60
+    )
+  type: boolean_per_node
+  label: yellow
+
+- name: yy_mem_utilization_extremely_high
+  desc: Return 1 if node mem utilization above 90%
+  expr: |
+    (
+      1 - ((sum(kube_node_status_capacity{resource="memory"}) by (node) 
+      - sum(kube_pod_container_resource_requests{resource="memory"}) by (node)) 
+      /  sum(kube_node_status_capacity{resource="memory"}) by (node)) > bool .90
+    )
+  type: boolean_per_node
+  label: red
+
+- name: yy_node_load1_high
+  desc: Return 1 if node_load1 above 60% https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load1) by (instance), "node", "$1", "instance", "(.+)")) >= bool 60
+  type: boolean_per_node
+  label: yellow
+
+- name: yy_node_load1_extremely_high
+  desc: Return 1 if node_load1 above 90% https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load1) by (instance), "node", "$1", "instance", "(.+)")) >= bool 90
+  type: boolean_per_node
+  label: red
+
+- name: yy_node_load5_high
+  desc: Return 1 if node_load5 above 60% https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load5) by (instance), "node", "$1", "instance", "(.+)")) >= bool 60
+  type: boolean_per_node
+  label: yellow
+
+- name: yy_node_load5_extremely_high
+  desc: Return 1 if node_load5 above 90% https://en.wikipedia.org/wiki/Load_(computing)
+  expr: sum by (node) (label_replace(sum(node_load5) by (instance), "node", "$1", "instance", "(.+)")) >= bool 90
+  type: boolean_per_node
+  label: red
+
+- name: yy_etcd_net_latency_high
+  desc: Return 1 on latency > 60ms (needs post processing)
+  expr: histogram_quantile(0.99, sum by (instance, le) (rate(etcd_network_peer_round_trip_time_seconds_bucket{job="etcd"}[5m]))) > bool 0.060
+  type: boolean_per_attribute
+  label: yellow
+
+- name: yy_etcd_net_latency_extremely_high
+  desc: Return 1 on latency > 90ms (needs post processing)
+  expr: histogram_quantile(0.99, sum by (instance, le) (rate(etcd_network_peer_round_trip_time_seconds_bucket{job="etcd"}[5m]))) > bool 0.090
+  type: boolean_per_attribute
+  label: red
+
+- name: yy_etcd_member_down
+  desc:
+  expr: |
+    sum by (pod) (
+          sum without (instance) (up{job=~".*etcd.*"} == bool 0)
+        or
+          count without (To) (
+            sum without (instance) (rate(etcd_network_peer_sent_failures_total{job=~".*etcd.*"}[120s])) > 0.01
+          )
+        ) > bool 0
+  type: boolean_per_attribute
+  label: red
+
+- name: yy_etcd_rtt_warning
+  desc: Return 1 if RTT > 60ms
+  expr: |
+    sum by(instance) (
+      instance:etcd_network_peer_round_trip_time_seconds:histogram_quantile{quantile="0.99"} @ end()
+    ) > bool 0.06
+  type: boolean_per_attribute
+  label: yellow
+
+- name: yy_etcd_rtt_critical
+  desc: Return 1 if RTT > 90ms
+  expr: |
+    sum by(instance) (
+      instance:etcd_network_peer_round_trip_time_seconds:histogram_quantile{quantile="0.99"} @ end()
+    ) > bool 0.09
+  type: boolean_per_attribute
+  label: red
+
+- name: yy_etcd_rtt_critical_fatal
+  desc: Return 1 if RTT > 100ms
+  expr: |
+    sum by(instance) (
+      instance:etcd_network_peer_round_trip_time_seconds:histogram_quantile{quantile="0.99"} @ end()
+    ) > bool 0.1
+  type: boolean_per_attribute
+  label: red_fatal
+
+- name: yy_etcd_failed_proposal_high
+  desc: etcd cluster has high number of proposal failures. > 5
+  expr: rate(etcd_server_proposals_failed_total{job=~".*etcd.*"}[15m]) > bool 5
+  type: boolean_per_attribute
+  label: yellow 
+
+- name: yy_etcd_failed_proposal_extremely_high
+  desc: etcd cluster has high number of proposal failures. > 10
+  expr: rate(etcd_server_proposals_failed_total{job=~".*etcd.*"}[15m]) > bool 10
+  type: boolean_per_attribute
+  label: red 
+
+- name: yy_etcd_fsync_duration_high
+  desc: 99th percentile fsync duration/disk latency. A high value indicates disk issues. > 50 ms
+  expr: sum by (instance) (histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{job=~".*etcd.*"}[5m]))) > bool 0.050
+  type: boolean_per_attribute
+  label: yellow
+
+- name: yy_etcd_fsync_duration_extremely_high
+  desc: 99th percentile fsync duration/disk latency. A high value indicates disk issues. > 75 ms
+  expr: sum by (instance) (histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{job=~".*etcd.*"}[5m]))) > bool 0.075
+  type: boolean_per_attribute
+  label: red
+
+- name: yy_etcd_database_high_fragmentation
+  desc: etcd database size in use is less than 50% of the actual allocated storage and db in use < 1GB
+  expr: |
+    sum by (pod) (
+      last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])
+      < bool 0.5
+    )
+  type: boolean_per_attribute
+  label: yellow
+
+- name: yy_etcd_database_extremely_high_fragmentation
+  desc: etcd database size in use is less than 40% of the actual allocated storage and db in use >= 1GB
+  expr: |
+    sum by (pod) (
+      last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])
+      < bool 0.4 and etcd_mvcc_db_total_size_in_use_in_bytes >= bool 1000000000
+    )
+  type: boolean_per_attribute
+  label: red
+
+- name: yy_etcd_grpc_requests_slow_critical
+  desc: Number of 99th peercentile with > 1 second respond time
+  expr: |
+    sum(histogram_quantile(0.99, 
+        sum(rate(grpc_server_handling_seconds_bucket{job="etcd", grpc_method!="Defragment",grpc_type="unary"}[10m])) 
+        without(grpc_type)
+      ) >  1) > bool 0
+  type: boolean
+  label: red 
+
+- name: yy_etcd_high_number_failed_grpc_requests
+  desc: Number of high number of etcd failed grpc requests > 10%
+  expr: |
+    (sum(rate(grpc_server_handled_total{job="etcd",
+    grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m]))
+    by (pod) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info))) 
+    > bool ((sum(rate(grpc_server_handled_total{job="etcd"}[5m])) by (pod)) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info)) * 0.10)
+  type: boolean_per_node
+  label: yellow
+
+- name: yy_etcd_extremely_high_number_failed_grpc_requests
+  desc: Number of high number of etcd failed grpc requests > 25%
+  expr: |
+    (sum(rate(grpc_server_handled_total{job="etcd",
+    grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m]))
+    by (pod) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info))) 
+    > bool ((sum(rate(grpc_server_handled_total{job="etcd"}[5m])) by (pod)) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info)) * 0.25)
+  type: boolean_per_node
+  label: red
+
+- name: yy_etcd_extremely_high_number_failed_grpc_requests_fatal
+  desc: Number of high number of etcd failed grpc requests > 50%
+  expr: |
+    (sum(rate(grpc_server_handled_total{job="etcd",
+    grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m]))
+    by (pod) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info))) 
+    > bool ((sum(rate(grpc_server_handled_total{job="etcd"}[5m])) by (pod)) * on (pod) group_left(node)(sum by (node,pod) (kube_pod_info)) * 0.50)
+  type: boolean_per_node
+  label: red_fatal
+
+- name: yy_etcd_high_number_leader_changes
+  desc: etcd cluster has high number of leader changes.
+  expr: avg(changes(etcd_server_is_leader[10m])) > bool 5
+  type: boolean
+  label: yellow 
+
+- name: yy_etcd_extremely_high_number_leader_changes
+  desc: etcd cluster has high number of leader changes.
+  expr: avg(changes(etcd_server_is_leader[10m])) > bool 10
+  type: boolean
+  label: red
+
+- name: yy_etcd_insufficient_members
+  desc: Return 1 if insufficient etcd members 
+  expr: | 
+    sum(up{job="etcd"} == bool 1 and etcd_server_has_leader{job="etcd"} == bool 1) 
+    < bool (count(up{job="etcd"}) + 1)/2
+  type: boolean 
+  label: red_fatal
+
+- name: yy_workqueue_queue_work_time_saturation
+  desc: If >2 Queques with latency > 1 second
+  expr: |
+    count(
+      histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="kube-controller-manager"}[5m])) by (name, le)) > 1
+    ) > bool 2
+  type: boolean 
+  label: red
+
+- name: yy_workqueue_queue_work_time_saturation_fatal
+  desc: If >4 Queques with latency > 1 second
+  expr: |
+    count(
+      histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="kube-controller-manager"}[5m])) by (name, le)) > 1
+    ) > bool 4
+  type: boolean 
+  label: red_fatal
+
+- name: yy_workqueue_retries_rate_high
+  desc: More than 5 queues with per-second average rate of retries > 3 per second
+  expr: count(sum(rate(workqueue_retries_total{job="kube-controller-manager"}[5m]) > 3) by (name)) or vector(0) > bool 5
+  type: boolean
+  label: red
+ 
+- name: yy_nodes_ready_lt_60p
+  desc: Return 1 if total number of nodes in ready state < 60%
+  expr: sum(kube_node_status_condition{condition="Ready", status="true"}) / count(sum(kube_node_role) by (node)) < bool 0.6
+  type: boolean
+  label: red
+
+- name: yy_node_pod_crashloopbackoff_gt_3
+  desc: Return 1 if the number of Pods in CraqshLoopBackOff > 3
+  expr: (count(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1) or vector(0)) > bool 3
+  type: boolean 
+  label: yellow
+
+- name: yy_node_pod_crashloopbackoff_gt_10
+  desc: Return 1 if the number of Pods in CraqshLoopBackOff > 10
+  expr: (count(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1) or vector(0)) > bool 10
+  type: boolean 
+  label: red
+
+- name: yy_cluster_control_plane_high
+  desc: high control-plane utilization > 60%
+  expr: |
+    (
+    1 - sum(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes and on (instance) 
+    label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.+)"))
+    / 
+    sum(node_memory_MemTotal_bytes and on (instance) 
+    label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.+)"))
+    ) > bool 0.60
+  type: boolean 
+  label: red 
+
+- name: yy_cluster_control_plane_extremely_high
+  desc: extremely high control-plane utilization > 90%
+  expr: |
+    (
+    1 - sum(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes and on (instance) 
+    label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.+)"))
+    / 
+    sum(node_memory_MemTotal_bytes and on (instance) 
+    label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.+)"))
+    ) > bool 0.90
+  type: boolean 
+  label: red_fatal
