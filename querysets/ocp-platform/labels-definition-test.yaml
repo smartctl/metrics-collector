@@ -1,0 +1,5 @@
+- name: yy_kubelet_healthstate
+  expr: sum by (node) (mcd_kubelet_state) > bool 2
+  desc: Returns 1 if 2 or more failures occur
+  type: boolean_per_node
+  label: yellow
