@@ -3,9 +3,10 @@ import yaml
 import time
 import inspect
 import pandas as pd
+from datetime import datetime
 
 class MetricsProcessor:
-    def __init__(self, prom_api, query_sets, logger, metrics_dir="data/collection"):
+    def __init__(self, prom_api, query_sets, query_mode, time_range, logger, output_format, metrics_dir="data/collection"):
         self.prom_api = prom_api
         self.logger = logger
         self.metrics_dir = metrics_dir
@@ -18,15 +19,27 @@ class MetricsProcessor:
         self.row_data = {}
         self.reset_row_data()
         self.logger.debug("MetricsProcessor initialized.")
+        self.output_format = output_format
+        self.query_mode = query_mode
+        self.time_range= time_range
+
+        if self.query_mode == 'range':
+            self.start_time, self.end_time = self.get_time_range_from_prometheus()
+            if not self.start_time or not self.end_time:
+                raise Exception("Could not determine time range from Prometheus")
+        else:
+            self.start_time = None
+            self.end_time = None
+
 
     def load_query_sets(self, query_sets):
         loaded_query_sets = {"features": [], "labels": []}
         for query_set in query_sets:
-            if "features" in query_set:  # Changed from query_sets to query_set
+            if "features" in query_set:
                 for query_file in query_set["features"]:
                     with open(query_file, "r") as f:
                         loaded_query_sets["features"].extend(yaml.safe_load(f))
-            if "labels" in query_set:  # Changed from query_sets to query_set
+            if "labels" in query_set:
                 for query_file in query_set["labels"]:
                     with open(query_file, "r") as f:
                         loaded_query_sets["labels"].extend(yaml.safe_load(f))
@@ -51,7 +64,10 @@ class MetricsProcessor:
         
         self.logger.debug(f"Validating queries.")
         try:
-            result = self.prom_api.query(metric["expr"])
+            if self.query_mode == 'range':
+                result = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time)
+            else:
+                result = self.prom_api.query(metric["expr"])
             if result:
                 value = result[0]["value"]
                 self.logger.debug(f"Fetched data for {metric['name']}: {value}")
@@ -199,6 +215,47 @@ class MetricsProcessor:
 
         self.logger.debug(f"Saved {collection} DataFrame to {filename}")
 
+    def save_to_csv(self, collection):
+        self.logger.debug(f"Saving data to DataFrame for {collection}.")
+
+        # Create the directory if it doesn't exist
+        if not os.path.exists(self.metrics_dir):
+            os.makedirs(self.metrics_dir)
+
+        # Create the filename
+        filename = f'{self.metrics_dir}/metrics_{collection}_{self.timestamp}.csv'
+
+        self.df.to_csv(filename)
+
+        self.logger.debug(f"Saved {collection} DataFrame to {filename}")
+
+    def get_time_range_from_prometheus(self):
+        try:
+            response = self.prom_api.get_status('tsdb')
+
+            self.logger.debug(f"Prometheus tsdb status response: {response}")
+
+            if 'data' in response:
+                data = response['data']
+                head_stats = data.get('headStats', {})
+                start_time = head_stats.get('minTime', None)
+                end_time = head_stats.get('maxTime', None)
+
+                if start_time and end_time:
+                    # Convert milliseconds to seconds since Python datetime uses seconds
+                    start_time = datetime.fromtimestamp(start_time / 1000)
+                    end_time = datetime.fromtimestamp(end_time / 1000)
+                    return start_time, end_time
+                else:
+                    self.logger.error("Could not extract minTime and maxTime from Prometheus response.")
+                    return None, None
+            else:
+                self.logger.error(f"Failed to fetch time range from Prometheus.")
+                return None, None
+        except Exception as e:
+            self.logger.error(f"Error fetching time range from Prometheus: {e}")
+            return None, None
+
     def validate_queries(self):
         for item in ["features", "labels"]:
             for metric in self.query_sets[item]:
@@ -220,7 +277,13 @@ class MetricsProcessor:
                 self.process_metrics(skill_name)
 
             self.commit_to_memory()
-            self.save_to_parquet("combined")
+            if self.output_format == "parquet":
+                self.save_to_parquet("combined")
+            elif self.output_format == "csv":
+                self.save_to_csv("combined")
+            else:
+                self.logger.error(f"Unsupported output format: {self.output_format}. Data not saved.")
+    
             self.logger.info("Processing completed for the current cycle.")
             self.logger.info(f"Next interval begins in {scheduler_interval} seconds, waiting for the next cycle.")
             if (scheduler_interval == 0):
