@@ -1,53 +1,23 @@
-import logging
-import argparse
-import os
-import sys
 from src.metrics_processor import MetricsProcessor
 from src.prometheus_api import PrometheusAPI
 from src.config import Config
-
+import sys
 
 def main():
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--validate", action="store_true", help="Only validate the Prometheus queries.")
-    parser.add_argument("--config", help="Config file to use. (default config.yaml)")
-    parser.add_argument("--collector_interval", type=int, help="Interval in seconds for metrics processing on a scheduler, not applicable with --validate")
-    parser.add_argument("--output", choices=["parquet", "csv"], help="Format to save the metrics. Options: parquet, csv.")
-    args = parser.parse_args()
+    # Initialize the Config class, which now handles logging, argument parsing, and loading config
+    configuration = Config()
+    if not configuration.config:
+        sys.exit("Failed to load configuration. Exiting...")
 
-    # Create a logger
-    logger = logging.getLogger(__name__)
+    logger = configuration.logger
+    config = configuration.config
+    args = configuration.args
 
-    # Set the log level based on the LOG_LEVEL environment variable
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    logger.setLevel(log_level)
-
-    # Create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(log_level)
-
-    # Create a formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s (%(name)s) [%(levelname)s] %(message)s')
-    ch.setFormatter(formatter)
-
-    # Add the handlers to the logger
-    logger.addHandler(ch)
-
-    # Load the general config
-    if args.config:
-        config = Config(args.config, logger).config
-    else:
-        config = Config("config.yaml", logger).config
-
-    output_format = "parquet"
-    if args.output:
-        output_format = args.output
-    elif "output" in config:
-        output_format = config["output"]
-
+    # Extracting necessary configurations
+    output_format = args.output or config.get("output", "parquet")
+    
     # Handle query_mode
-    query_mode = config.get("prometheus", {}).get("query_mode", "instant")  # defaulting to "instant"
+    query_mode = config.get("prometheus", {}).get("query_mode", "instant")
     if query_mode not in ["instant", "range"]:
         logger.error(f"Invalid query_mode '{query_mode}' specified. Allowed values are 'instant' and 'range'. Exiting...")
         sys.exit(1)
@@ -60,9 +30,8 @@ def main():
             logger.error("time_range is required when query_mode is 'range'. Exiting...")
             sys.exit(1)
 
-    # Read the collector_interval from config.yaml
+    # Extract collector_interval and possibly override
     collector_interval = config["collector"]["interval"]
-    # Override the collector_interval if provided through the command-line argument
     if args.collector_interval:
         collector_interval = args.collector_interval
 
