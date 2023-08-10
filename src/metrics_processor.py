@@ -6,12 +6,13 @@ import pandas as pd
 from datetime import datetime
 
 class MetricsProcessor:
-    def __init__(self, prom_api, query_sets, query_mode, time_range, logger, output_format, metrics_dir="data/collection"):
+    def __init__(self, prom_api, query_sets, query_mode, time_range, logger,
+                 destination_path="data/collection", file_format="parquet", compression='snappy'):
         self.prom_api = prom_api
         self.logger = logger
-        self.metrics_dir = metrics_dir
-        if not os.path.exists(self.metrics_dir):
-            os.makedirs(self.metrics_dir)
+        self.destination_path = destination_path
+        if not os.path.exists(self.destination_path):
+            os.makedirs(self.destination_path)
         self.query_sets = self.load_query_sets(query_sets)
         self.df = pd.DataFrame()
         self.timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -19,9 +20,10 @@ class MetricsProcessor:
         self.row_data = {}
         self.reset_row_data()
         self.logger.debug("MetricsProcessor initialized.")
-        self.output_format = output_format
+        self.file_format = file_format
+        self.compression = compression
         self.query_mode = query_mode
-        self.time_range= time_range
+        self.time_range = time_range
 
         if self.query_mode == 'range':
             self.start_time, self.end_time = self.get_time_range_from_prometheus()
@@ -331,32 +333,22 @@ class MetricsProcessor:
 
 
     def save_to_parquet(self, collection):
-        self.logger.debug(f"Saving data to DataFrame for {collection}.")
+        self.logger.debug(f"Preparing to save {collection} data to a Parquet file.")
+        filename = f'{self.destination_path}/metrics_{collection}_{self.timestamp}.parquet'
+        
+        if self.compression:
+            self.df.to_parquet(filename, compression=self.compression)
+            self.logger.debug(f"Saved {collection} DataFrame to {filename} using {self.compression} compression.")
+        else:
+            self.df.to_parquet(filename)
+            self.logger.debug(f"Saved {collection} DataFrame to {filename} without compression.")
 
-        # Create the directory if it doesn't exist
-        if not os.path.exists(self.metrics_dir):
-            os.makedirs(self.metrics_dir)
-
-        # Create the filename
-        filename = f'{self.metrics_dir}/metrics_{collection}_{self.timestamp}.parquet'
-
-        self.df.to_parquet(filename, compression="snappy")
-
-        self.logger.debug(f"Saved {collection} DataFrame to {filename}")
 
     def save_to_csv(self, collection):
-        self.logger.debug(f"Saving data to DataFrame for {collection}.")
-
-        # Create the directory if it doesn't exist
-        if not os.path.exists(self.metrics_dir):
-            os.makedirs(self.metrics_dir)
-
-        # Create the filename
-        filename = f'{self.metrics_dir}/metrics_{collection}_{self.timestamp}.csv'
-
+        self.logger.debug(f"Preparing to save {collection} data to a CSV file.")
+        filename = f'{self.destination_path}/metrics_{collection}_{self.timestamp}.csv'
         self.df.to_csv(filename)
-
-        self.logger.debug(f"Saved {collection} DataFrame to {filename}")
+        self.logger.debug(f"Saved {collection} DataFrame to {filename}.")
 
     def get_time_range_from_prometheus(self):
         try:
@@ -403,12 +395,12 @@ class MetricsProcessor:
                 self.process_metrics(skill_name)
             
             self.commit_to_memory()
-            if self.output_format == "parquet":
+            if self.file_format == "parquet":
                 self.save_to_parquet("combined")
-            elif self.output_format == "csv":
+            elif self.file_format == "csv":
                 self.save_to_csv("combined")
             else:
-                self.logger.error(f"Unsupported output format: {self.output_format}. Data not saved.")
+                self.logger.error(f"Unsupported output format: {self.file_format}. Data not saved.")
             
             self.logger.info("Processing completed for the time range specified.")
             return  # Exit the function
@@ -423,12 +415,12 @@ class MetricsProcessor:
                 self.process_metrics(skill_name)
 
             self.commit_to_memory()
-            if self.output_format == "parquet":
+            if self.file_format == "parquet":
                 self.save_to_parquet("combined")
-            elif self.output_format == "csv":
+            elif self.file_format == "csv":
                 self.save_to_csv("combined")
             else:
-                self.logger.error(f"Unsupported output format: {self.output_format}. Data not saved.")
+                self.logger.error(f"Unsupported output format: {self.file_format}. Data not saved.")
     
             self.logger.info("Processing completed for the current cycle.")
             self.logger.info(f"Next interval begins in {scheduler_interval} seconds, waiting for the next cycle.")

@@ -13,4 +13,7 @@ prometheus:
       labels:
         - "querysets/ocp-platform/labels-definition.yaml"
 
-output: csv # if not set default parquet
+destination:
+  path: data/collection
+  file_format: parquet
+  compression: 'snappy'
