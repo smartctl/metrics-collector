@@ -15,6 +15,7 @@ class Config:
         # Load the configuration
         self.config_file = self.args.config if self.args.config else "config.yaml"
         self.config = self.load_config()
+        self.validate_configs()
 
     def parse_args(self):
         parser = argparse.ArgumentParser()
@@ -44,3 +45,14 @@ class Config:
         except Exception as e:
             self.logger.error(f"Failed to load the config YAML file due to {str(e)}")
             return None
+
+    def validate_configs(self):
+        self.output_format = self.args.output or self.config.get("output", "parquet")
+        self.query_mode = self.config.get("prometheus", {}).get("query_mode", "instant")
+        if self.query_mode == "range":
+            self.time_range = self.config.get("prometheus", {}).get("time_range")
+        else:
+            self.time_range = None
+        self.collector_interval = self.config["collector"]["interval"]
+        if self.args.collector_interval:
+            self.collector_interval = self.args.collector_interval
