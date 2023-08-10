@@ -4,6 +4,7 @@ import logging
 import argparse
 import os
 import sys
+from src.stats import FileStats
 
 class Config:
     def __init__(self):
@@ -32,6 +33,8 @@ class Config:
         parser.add_argument("--output_format", choices=["csv", "parquet"], help="Override the file format from configuration. Options: parquet, csv.")
         parser.add_argument("--compression", choices=["", "GZIP", "snappy", "brotli"], 
                             help="Override the compression format from configuration. Options: 'GZIP', 'snappy', 'brotli'. Leave empty for no compression.")
+        parser.add_argument("--stats", action="store_true", help="Display statistics about a data file.")
+        parser.add_argument("--filename", type=str, help="Full path of the file for which to display statistics. Required if --stats is provided.")
         return parser.parse_args()
 
     def setup_logger(self):
@@ -91,3 +94,21 @@ class Config:
         if self.compression and self.compression not in ["", "GZIP", "snappy", "brotli"]:
             self.logger.error("Invalid compression format. Supported options are 'GZIP', 'snappy', 'brotli' or leave empty for no compression.")
             sys.exit(1)
+
+    def is_stats_mode(self):
+        return self.args.stats
+
+    def get_filename_for_stats(self):
+        if not self.args.filename:
+            self.logger.error("Please provide a valid filename with the --filename option.")
+            sys.exit(1)
+        return self.args.filename
+
+    def get_stats(self):
+        try:
+            stats_obj = FileStats(self.get_filename_for_stats())
+            stats_obj.print_summary()
+        except FileNotFoundError:
+            self.logger.error(f"The file '{self.get_filename_for_stats()}' does not exist. Please provide a valid file path.")
+        except Exception as e:
+            self.logger.error(f"An error occurred: {str(e)}")

@@ -52,7 +52,7 @@ class MetricsProcessor:
         self.row_data={"run_id":self.timestamp}
 
     def fetch_metrics(self, metric):
-        self.logger.debug(f"Validating entry format.")
+        self.logger.info(f"Validating entry format.")
         try:
             if metric.get("name") is None:
                 raise Exception(f"Missing the 'name' key",f"{metric}")
@@ -64,13 +64,13 @@ class MetricsProcessor:
             self.logger.error(f"[{inspect.stack()[0][3]}] Invalid entry. {str(e)}")
             return None
         
-        self.logger.debug(f"Validating queries.")
+        self.logger.info(f"Validating queries.")
         try:
             if self.query_mode == 'range':
                 result = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time)
                 if result and result[0].get("values"):
                     values = result[0]["values"]
-                    self.logger.debug(f"Fetched data for {metric['name']}: {values[0]}")
+                    self.logger.info(f"Fetched data for {metric['name']}: {values[0]}")
                     return values[0][1]
                 else:
                     self.logger.warning(f"No data returned for metric {metric['name']} in range mode.")
@@ -78,7 +78,7 @@ class MetricsProcessor:
                 result = self.prom_api.query(metric["expr"])
                 if result and result[0].get("value"):
                     value = result[0]["value"]
-                    self.logger.debug(f"Fetched data for {metric['name']}: {value}")
+                    self.logger.info(f"Fetched data for {metric['name']}: {value}")
                     return value[1]
                 else:
                     self.logger.warning(f"No data returned for metric {metric['name']} in instant mode.")
@@ -347,7 +347,7 @@ class MetricsProcessor:
     def save_to_csv(self, collection):
         self.logger.debug(f"Preparing to save {collection} data to a CSV file.")
         filename = f'{self.destination_path}/metrics_{collection}_{self.timestamp}.csv'
-        self.df.to_csv(filename)
+        self.df.to_csv(filename, index=False)
         self.logger.debug(f"Saved {collection} DataFrame to {filename}.")
 
     def get_time_range_from_prometheus(self):

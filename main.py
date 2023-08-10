@@ -2,6 +2,7 @@
 from src.metrics_processor import MetricsProcessor
 from src.prometheus_api import PrometheusAPI
 from src.config import Config
+from src.stats import FileStats
 import sys
 
 def main():
@@ -11,6 +12,10 @@ def main():
         sys.exit("Failed to load configuration. Exiting...")
 
     logger = configuration.logger
+
+    if configuration.is_stats_mode():
+        configuration.get_stats()
+        sys.exit(0)
 
     # Create the Prometheus API client
     prom_api = PrometheusAPI(configuration.config["prometheus"]["url"], configuration.config["prometheus"]["token"], logger)
