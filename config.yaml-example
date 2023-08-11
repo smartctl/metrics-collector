@@ -2,6 +2,8 @@ collector:
   interval: 10 # frequency to execute a collection cycle (seconds)
 
 prometheus:
+  query_mode: 'range'  # 'instant' or 'range', if not set default instant
+  time_range: '15m'  # or any other duration like '1h', '20m' etc required for range
   url: "https://prometheus-k8s-openshift-monitoring.apps.<clusterName>.<baseDomain>"
   token: "YOUR_TOKEN_HERE"
   query_sets:
@@ -10,3 +12,8 @@ prometheus:
         - "querysets/ocp-platform/features-definition.yaml"
       labels:
         - "querysets/ocp-platform/labels-definition.yaml"
+
+destination:
+  path: data/collection
+  file_format: parquet
+  compression: 'snappy'

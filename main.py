@@ -1,64 +1,38 @@
-import logging
-import argparse
-import os
-import sys
+# main.py
 from src.metrics_processor import MetricsProcessor
 from src.prometheus_api import PrometheusAPI
 from src.config import Config
-
+import sys
 
 def main():
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--validate", action="store_true", help="Only validate the Prometheus queries.")
-    parser.add_argument("--config", help="Config file to use. (default config.yaml)")
-    parser.add_argument("--collector_interval", type=int, help="Interval in seconds for metrics processing on a scheduler, not applicable with --validate")
-    args = parser.parse_args()
+    # Initialize the Config class
+    configuration = Config()
+    if not configuration.config:
+        sys.exit("Failed to load configuration. Exiting...")
 
-    # Create a logger
-    logger = logging.getLogger(__name__)
-
-    # Set the log level based on the LOG_LEVEL environment variable
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    logger.setLevel(log_level)
-
-    # Create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(log_level)
-
-    # Create a formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s (%(name)s) [%(levelname)s] %(message)s')
-    ch.setFormatter(formatter)
-
-    # Add the handlers to the logger
-    logger.addHandler(ch)
-
-    # Load the general config
-    if args.config:
-        config = Config(args.config, logger).config
-    else:
-        config = Config("config.yaml", logger).config
-
-    # Read the collector_interval from config.yaml
-    collector_interval = config["collector"]["interval"]
-    # Override the collector_interval if provided through the command-line argument
-    if args.collector_interval:
-        collector_interval = args.collector_interval
+    logger = configuration.logger
 
     # Create the Prometheus API client
-    prom_api = PrometheusAPI(config["prometheus"]["url"], config["prometheus"]["token"], logger)
+    prom_api = PrometheusAPI(configuration.config["prometheus"]["url"], configuration.config["prometheus"]["token"], logger)
 
     # Create the MetricsProcessor
-    processor = MetricsProcessor(prom_api, config["prometheus"]["query_sets"], logger)
+    processor = MetricsProcessor(prom_api,
+                                 configuration.config["prometheus"]["query_sets"], 
+                                 configuration.query_mode,
+                                 configuration.time_range,
+                                 logger,
+                                 file_format=configuration.file_format,
+                                 destination_path=configuration.destination_path,
+                                 compression=configuration.compression)
 
-    if args.validate:
+    if configuration.args.validate:
         # Only validate the Prometheus queries
         processor.validate_queries()
     else:
         # Run metrics processing on a scheduler
         # if collector_interval = 0 then run metrics processing only once
         try:
-            processor.start(collector_interval)
+            processor.start(configuration.collector_interval)
         except KeyboardInterrupt:
             logger.info(f"CTRL + C (SIGINT) detected. Shutting down...")
             sys.exit(0)
