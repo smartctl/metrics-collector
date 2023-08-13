@@ -1,18 +1,18 @@
 - name: yy_kubelet_healthstate
-  expr: sum by (node) (mcd_kubelet_state) > bool 2
-  desc: Returns 1 if 2 or more failures occur
+  expr: sum by (node)(max_over_time(mcd_kubelet_state[5m])) > bool 2
+  desc: Returns 1 if 2 or more kubelet health failures occur (from gauge)
   type: boolean_per_node
   label: yellow
 
 - name: yy_kubelet_healthstate_critical
-  expr: sum by (node) (mcd_kubelet_state) > bool 5
-  desc: Returns 1 if 5 or more failures occur
+  expr: sum by (node)(max_over_time(mcd_kubelet_state[5m])) > bool 5
+  desc: Returns 1 if 5 or more kubelet health failures occur
   type: boolean_per_node
   label: red
 
 - name: yy_kubelet_healthstate_critical_fatal
-  expr: sum by (node) (mcd_kubelet_state) > bool 10
-  desc: Returns 1 if 10 or more failures occur
+  expr: sum by (node)(max_over_time(mcd_kubelet_state[5m])) > bool 10
+  desc: Returns 1 if 10 or more kubelet health failures occur
   type: boolean_per_node
   label: red_fatal
 
@@ -28,23 +28,23 @@
   label: red
 
 - name: yy_mem_utilization_high
-  desc: Return 1 if node mem utilization above 60%
+  desc: Return 1 if node mem utilization above 60% over the past 5mins
   expr: |
     (
-      1 - ((sum(kube_node_status_capacity{resource="memory"}) by (node) 
-      - sum(kube_pod_container_resource_requests{resource="memory"}) by (node)) 
-      /  sum(kube_node_status_capacity{resource="memory"}) by (node)) > bool .60
+          1 - ((sum(avg_over_time(kube_node_status_capacity{resource="memory"}[5m])) by (node) 
+          - sum(avg_over_time(kube_pod_container_resource_requests{resource="memory"}[5m])) by (node))) 
+          /  sum(avg_over_time(kube_node_status_capacity{resource="memory"}[5m])) by (node) > bool .60
     )
   type: boolean_per_node
   label: yellow
 
 - name: yy_mem_utilization_extremely_high
-  desc: Return 1 if node mem utilization above 90%
+  desc: Return 1 if node mem utilization above 90% over the past 5 mins
   expr: |
     (
-      1 - ((sum(kube_node_status_capacity{resource="memory"}) by (node) 
-      - sum(kube_pod_container_resource_requests{resource="memory"}) by (node)) 
-      /  sum(kube_node_status_capacity{resource="memory"}) by (node)) > bool .90
+          1 - ((sum(avg_over_time(kube_node_status_capacity{resource="memory"}[5m])) by (node) 
+          - sum(avg_over_time(kube_pod_container_resource_requests{resource="memory"}[5m])) by (node))) 
+          /  sum(avg_over_time(kube_node_status_capacity{resource="memory"}[5m])) by (node) > bool .90
     )
   type: boolean_per_node
   label: red

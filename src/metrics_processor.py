@@ -78,14 +78,17 @@ class MetricsProcessor:
             self.logger.debug(f"Processing metric: {metric['name']}, type: {metric['type']}")
             if metric["type"] == "scalar":
                 self.process_scalar_metrics(metric)
+            elif metric["type"] == "boolean":
+                self.process_boolean_metrics(metric)
+            elif metric["type"] == "boolean_per_node":
+                self.process_boolean_per_node_metrics(metric)
+            elif metric["type"] == "scalar_per_attribute":
+                self.process_scalar_per_attribute_metrics(metric)
+            # NOTE: These need to be at the end of the elif
             elif metric["type"].endswith("per_node"):
                 self.process_per_node_metrics(metric)
             elif metric["type"].endswith("per_node_per_attribute"):
                 self.process_per_node_per_attribute_metrics(metric)
-            elif metric["type"] == "boolean":
-                self.process_boolean_metrics(metric)
-            elif metric["type"] == "scalar_per_attribute":
-                self.process_scalar_per_attribute_metrics(metric)
 
     def process_per_node_per_attribute_metrics(self, metric):
         self.logger.debug(f"Processing per_node_per_attribute metrics for {metric['name']}.")
@@ -102,7 +105,8 @@ class MetricsProcessor:
                         value = value.replace('-','_').replace('.','_')
                         attribute_values.append(value)
                 # Join all attribute values with underscore to create final attribute name
-                attribute_key = '_'.join(attribute_values) if attribute_values else 'default'              
+                attribute_key = '_'.join(attribute_values) if attribute_values else 'default'
+                              
                 self.row_data[f"{node_name}_{attribute_key}"] = item['value'][1]
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for query {metric['expr']} due to {str(e)}")
@@ -136,12 +140,13 @@ class MetricsProcessor:
         try:
             result = self.prom_api.query(metric['expr'])
             for item in result:
+                # skip if empty node entry
                 if item['metric']['node'] == "":
                     continue
                 node_name = self.get_node_map(item['metric']['node'])
                 metric_name = metric['name']
                 value = result[0]["value"][1]
-                self.row_data[f"{node_name}_{metric_name}"] = 'green' if value == '0' else metric['label']
+                self.row_data[f"{node_name}_{metric_name}"] = False if value == '0' else True
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for query {metric['expr']} due to {str(e)}")
 
@@ -151,7 +156,7 @@ class MetricsProcessor:
             result = self.prom_api.query(metric["expr"])
             if result:
                 value = result[0]["value"][1]
-                self.row_data[metric["name"]] = value
+                self.row_data[metric["name"]] = False if value == '0' else True
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for query {metric['expr']} due to {str(e)}")
 
