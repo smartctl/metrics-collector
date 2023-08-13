@@ -1,6 +1,5 @@
 pandas
 numpy
 requests
-kubernetes
 pyarrow
 PyYAML
