@@ -1,4 +1,4 @@
-# Matrics Collector
+# Metrics Collector
 
 A collector of Prometheus metrics for data anisys.
 

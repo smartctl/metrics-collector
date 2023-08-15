@@ -225,7 +225,7 @@ class MetricsProcessor:
                 self.process_metrics(skill_name)
 
             self.commit_to_memory()
-            self.save_to_parquet("combined")
+            self.save_to_parquet("captured")
             self.logger.info("Processing completed for the current cycle.")
             self.logger.info(f"Next interval begins in {scheduler_interval} seconds, waiting for the next cycle.")
             if (scheduler_interval == 0):
