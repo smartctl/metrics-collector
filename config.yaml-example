@@ -1,19 +1,44 @@
-collector:
-  interval: 10 # frequency to execute a collection cycle (seconds)
-
 prometheus:
-  query_mode: 'range'  # 'instant' or 'range', if not set default instant
-  time_range: '15m'  # or any other duration like '1h', '20m' etc required for range
+  # Mode of query: 'instant' for a single point in time, 'range' for a duration. Defaults to 'instant' if not specified.
+  query_mode: 'range'
+  
+  # Duration between data points in the query. Applicable to both 'range' and 'instant' query modes.
+  # Acceptable formats include: '1h' (1 hour), '15m' (15 minutes), etc.
+  interval: '15m'
+  
+  # Start time for the range query. If not provided, it will be dynamically determined from the Prometheus server.
+  # Use format 'YYYY-MM-DD HH:MM:SS'.
+  start_time: '2023-08-16 08:03:08'
+  
+  # End time for the range query. If not provided, it will be dynamically determined from the Prometheus server.
+  # Use format 'YYYY-MM-DD HH:MM:SS'.
+  end_time: '2023-08-17 08:56:03'
+  
+  # URL endpoint for the Prometheus instance you are querying.
   url: "https://prometheus-k8s-openshift-monitoring.apps.<clusterName>.<baseDomain>"
+  
+  # Authentication token to access Prometheus. Refer to README on how to obtain this token.
   token: "YOUR_TOKEN_HERE"
+  
+  # Set of query definitions to use during data collection.
   query_sets:
     - name: base
       features:
+        # List of YAML files containing PromQL queries for metrics (X features in machine learning).
         - "querysets/ocp-platform/features-definition.yaml"
       labels:
+        # List of YAML files containing PromQL queries for labels (Y labels in machine learning).
         - "querysets/ocp-platform/labels-definition.yaml"
 
 destination:
+  # Path where the collected data will be saved. This can be overridden using the --output_path command-line argument.
   path: data/collection
+  
+  # The format in which the data will be saved. Options include 'parquet' and 'csv'. 
+  # This can be overridden using the --output_format command-line argument.
   file_format: parquet
+  
+  # Compression algorithm to use for the data files. Options: 'GZIP', 'snappy', 'brotli'. 
+  # This can be overridden using the --compression command-line argument. 
+  # Leave empty for no compression.
   compression: 'snappy'

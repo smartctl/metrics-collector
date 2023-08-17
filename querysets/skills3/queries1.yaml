@@ -1,2 +1,0 @@
-- query: sum(container_cpu_usage_seconds_total{container!~"POD|",id=~".*burstable.*"} ) by (node)
-  metricName: node_pod_qos_cpu_burstable
