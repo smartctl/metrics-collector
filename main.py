@@ -24,8 +24,10 @@ def main():
     processor = MetricsProcessor(prom_api,
                                  configuration.config["prometheus"]["query_sets"], 
                                  configuration.query_mode,
-                                 configuration.time_range,
+                                 configuration.interval,
                                  logger,
+                                 configuration.start_time,
+                                 configuration.end_time,
                                  file_format=configuration.file_format,
                                  destination_path=configuration.destination_path,
                                  compression=configuration.compression)

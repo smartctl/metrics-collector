@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 
 class MetricsProcessor:
-    def __init__(self, prom_api, query_sets, query_mode, time_range, logger,
+    def __init__(self, prom_api, query_sets, query_mode, interval, logger, start_time=None, end_time=None,
                  destination_path="data/collection", file_format="parquet", compression='snappy'):
         self.prom_api = prom_api
         self.logger = logger
@@ -20,10 +20,12 @@ class MetricsProcessor:
         self.row_data = {}
         self.reset_row_data()
         self.logger.debug("MetricsProcessor initialized.")
+        self.start_time = start_time
+        self.end_time = end_time
         self.file_format = file_format
         self.compression = compression
         self.query_mode = query_mode
-        self.time_range = time_range
+        self.interval = interval
 
         if self.query_mode == 'range':
             self.start_time, self.end_time = self.get_time_range_from_prometheus()
@@ -119,7 +121,7 @@ class MetricsProcessor:
         self.logger.debug(f"Processing per_node_per_attribute metrics for {metric['name']}.")
         try:
             if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.time_range)
+                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
                 for item in results:
                     node_name = self.get_node_map(item['metric']['node'])
                     attribute_values = []
@@ -167,7 +169,7 @@ class MetricsProcessor:
         self.logger.debug(f"Processing scalar metrics for {metric['name']}.")
         try:
             if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.time_range)
+                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
                 values = [point[1] for series in results for point in series['values']]
                 self.row_data[metric["name"]] = values
             else:
@@ -185,7 +187,7 @@ class MetricsProcessor:
         self.logger.debug(f"Processing per_node metrics for {metric['name']}.")
         try:
             if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.time_range)
+                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
                 
                 for item in results:
                     if item['metric']['node'] == "":
@@ -216,7 +218,7 @@ class MetricsProcessor:
         self.logger.debug(f"Processing boolean_per_node metrics for {metric['name']}.")
         try:
             if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.time_range)
+                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
 
                 for item in results:
                     if item['metric']['node'] == "":
@@ -253,7 +255,7 @@ class MetricsProcessor:
         self.logger.debug(f"Processing boolean metrics for {metric['name']}.")
         try:
             if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.time_range)
+                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
                 # Extract values from the range results
                 values = [point[1] for series in results for point in series['values']]
                 self.row_data[metric["name"]] = values
@@ -269,7 +271,7 @@ class MetricsProcessor:
         self.logger.debug(f"Processing scalar_per_attribute metrics for {metric['name']}.")
         try:
             if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.time_range)
+                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
 
                 for item in results:
                     attribute_values = []
@@ -351,25 +353,29 @@ class MetricsProcessor:
         self.logger.debug(f"Saved {collection} DataFrame to {filename}.")
 
     def get_time_range_from_prometheus(self):
+
+        if self.start_time and self.end_time:
+            self.logger.info(f"Time range determined from Config: Start - {self.start_time}, End - {self.end_time}")
+            return self.start_time, self.end_time
         try:
-            response = self.prom_api.get_status('tsdb')
+            min_time_query = "min(min_over_time(kube_pod_start_time[365d]))"
+            max_time_query = "time()"
 
-            self.logger.debug(f"Prometheus tsdb status response: {response}")
+            start_time_response = self.prom_api.query(min_time_query)
+            end_time_response = self.prom_api.query(max_time_query)
 
-            if 'data' in response:
-                data = response['data']
-                head_stats = data.get('headStats', {})
-                start_time = head_stats.get('minTime', None)
-                end_time = head_stats.get('maxTime', None)
+            if not start_time_response or not end_time_response:
+                self.logger.error(f"Failed to fetch time range from Prometheus.")
+                return None, None
 
-                if start_time and end_time:
-                    # Convert milliseconds to seconds since Python datetime uses seconds
-                    start_time = datetime.fromtimestamp(start_time / 1000)
-                    end_time = datetime.fromtimestamp(end_time / 1000)
-                    return start_time, end_time
-                else:
-                    self.logger.error("Could not extract minTime and maxTime from Prometheus response.")
-                    return None, None
+            start_time_value = float(start_time_response[0]['value'][1])
+            end_time_value = float(end_time_response[0])
+
+            if start_time_value and end_time_value:
+                start_time_datetime = datetime.fromtimestamp(start_time_value)
+                end_time_datetime = datetime.fromtimestamp(end_time_value)
+                self.logger.info(f"Time range determined from Prometheus: Start - {start_time_datetime}, End - {end_time_datetime}")
+                return start_time_datetime, end_time_datetime
             else:
                 self.logger.error(f"Failed to fetch time range from Prometheus.")
                 return None, None

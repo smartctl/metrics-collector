@@ -4,6 +4,7 @@ import logging
 import argparse
 import os
 import sys
+from datetime import datetime
 from src.stats import FileStats
 
 class Config:
@@ -66,7 +67,27 @@ class Config:
 
         # Validations for query_mode and time_range
         self.query_mode = self.config.get("prometheus", {}).get("query_mode", "instant")
-        self.time_range = self.config.get("prometheus", {}).get("time_range") if self.query_mode == "range" else None
+        self.interval = self.config.get("prometheus", {}).get("interval") if self.query_mode == "range" else None
+
+        self.start_time = None
+        self.end_time = None
+
+        start_time_str = self.config["prometheus"].get("start_time")
+        end_time_str = self.config["prometheus"].get("end_time")
+
+        if start_time_str:
+            try:
+                self.start_time = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
+            except ValueError as ve:
+                self.logger.error(f"Error parsing start_time from config: {ve}")
+                self.start_time = None
+
+        if end_time_str:
+            try:
+                self.end_time = datetime.strptime(end_time_str, '%Y-%m-%d %H:%M:%S')
+            except ValueError as ve:
+                self.logger.error(f"Error parsing end_time from config: {ve}")
+                self.end_time = None
 
         # Setting default collector_interval
         self.collector_interval = self.config["collector"]["interval"]
