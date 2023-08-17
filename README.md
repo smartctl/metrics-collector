@@ -22,19 +22,26 @@ pip install -r requirements.txt
 - Update `config.yaml` to match your environment. Example:
 
 ```yaml
-collector:
-  interval: 30 # frequency to execute a collection cycle (seconds)
-
 prometheus:
+  query_mode: 'range'  # 'instant' or 'range'. Default: instant
+  interval: '15m'     # e.g., '1h', '20m', etc. Valid for both range and instant
+  start_time: '2023-08-16 08:03:08'  # Start time for data collection only applicable for range type
+  end_time: '2023-08-17 08:56:03'    # End time for data collection only applicable for range type
   url: "https://prometheus-k8s-openshift-monitoring.apps.<clusterName>.<baseDomain>"
-  token: "YOUR_TOKEN_HERE" # See Token section
+  token: "YOUR_TOKEN_HERE"  # See Token section below
   query_sets:
     - name: base
       features:
         - "querysets/ocp-platform/features-definition.yaml"
       labels:
         - "querysets/ocp-platform/labels-definition.yaml"
+
+destination:
+  path: data/collection   # Path where data will be saved
+  file_format: parquet   # File format for saved data
+  compression: 'snappy'  # Compression method used
 ```
+
 - Execute the collector `python main.py` and collect for the desired time.
   - Press Ctrl-C to break or stop collection
   - A parquet file will be written to data/collection 

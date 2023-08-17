@@ -37,9 +37,9 @@ def main():
         processor.validate_queries()
     else:
         # Run metrics processing on a scheduler
-        # if collector_interval = 0 then run metrics processing only once
+        # if interval = 0 then run metrics processing only once
         try:
-            processor.start(configuration.collector_interval)
+            processor.start(configuration.interval)
         except KeyboardInterrupt:
             logger.info(f"CTRL + C (SIGINT) detected. Shutting down...")
             sys.exit(0)

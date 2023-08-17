@@ -408,11 +408,11 @@ class MetricsProcessor:
             else:
                 self.logger.error(f"Unsupported output format: {self.file_format}. Data not saved.")
             
-            self.logger.info("Processing completed for the time range specified.")
+            self.logger.info(f"Processing completed for the time range specified. Interval: {self.interval}s")
             return  # Exit the function
 
         # If query_mode is set to another value (e.g., instant), the script should repeatedly execute in intervals
-        print(f"MetricsProcessor with interval={scheduler_interval}")
+        print(f"MetricsProcessor with interval={scheduler_interval}s")
 
         while True:
             self.reset_row_data() # reset array to prevent data leaking between runs

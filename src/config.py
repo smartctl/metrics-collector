@@ -29,7 +29,7 @@ class Config:
         parser = argparse.ArgumentParser()
         parser.add_argument("--validate", action="store_true", help="Only validate the Prometheus queries.")
         parser.add_argument("--config", help="Config file to use. (default config.yaml)")
-        parser.add_argument("--collector_interval", type=int, help="Interval in seconds for metrics processing on a scheduler, not applicable with --validate")
+        parser.add_argument("--interval", type=str, help="Interval for metrics processing on a scheduler (e.g., '100s', '5m', '1h'). Not applicable with --validate")
         parser.add_argument("--output_path", help="Override the path to write files from configuration.")
         parser.add_argument("--output_format", choices=["csv", "parquet"], help="Override the file format from configuration. Options: parquet, csv.")
         parser.add_argument("--compression", choices=["", "GZIP", "snappy", "brotli"], 
@@ -67,7 +67,17 @@ class Config:
 
         # Validations for query_mode and time_range
         self.query_mode = self.config.get("prometheus", {}).get("query_mode", "instant")
-        self.interval = self.config.get("prometheus", {}).get("interval") if self.query_mode == "range" else None
+
+        # Parse the prometheus.interval
+        interval_str = self.config.get("prometheus", {}).get("interval")
+        if not interval_str:
+            self.logger.error("Interval under prometheus configuration is required.")
+            sys.exit(1)
+        try:
+            self.interval = self.parse_duration(interval_str)
+        except ValueError as ve:
+            self.logger.error(str(ve))
+            sys.exit(1)
 
         self.start_time = None
         self.end_time = None
@@ -89,9 +99,6 @@ class Config:
                 self.logger.error(f"Error parsing end_time from config: {ve}")
                 self.end_time = None
 
-        # Setting default collector_interval
-        self.collector_interval = self.config["collector"]["interval"]
-
     def override_with_arguments(self):
         # Override destination configurations with command-line arguments, if provided
         if self.args.output_path:
@@ -104,8 +111,8 @@ class Config:
         # Override other configurations using command-line arguments
         if self.args.output_format:
             self.output_format = self.args.output_format
-        if self.args.collector_interval:
-            self.collector_interval = self.args.collector_interval
+        if self.args.interval:
+            self.interval = self.parse_duration(self.args.interval)
         
         # Post-override validations
         if self.file_format not in ["csv", "parquet"]:
@@ -133,3 +140,22 @@ class Config:
             self.logger.error(f"The file '{self.get_filename_for_stats()}' does not exist. Please provide a valid file path.")
         except Exception as e:
             self.logger.error(f"An error occurred: {str(e)}")
+
+    def parse_duration(self, duration_str):
+        multipliers = {'s': 1, 'm': 60, 'h': 3600}
+
+        if not duration_str:
+            raise ValueError("Duration string cannot be empty or None")
+
+        # If the string is just a number (without s, m, h suffix), assume seconds
+        if duration_str.isdigit():
+            return int(duration_str)
+
+        # Check if it's a duration format
+        if duration_str[-1].lower() in multipliers:
+            if duration_str[:-1].isdigit():
+                return int(duration_str[:-1]) * multipliers[duration_str[-1].lower()]
+            else:
+                raise ValueError(f"Invalid duration format: {duration_str}")
+
+        raise ValueError(f"Unrecognized duration format: {duration_str}")
