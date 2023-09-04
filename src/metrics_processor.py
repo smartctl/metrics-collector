@@ -106,16 +106,17 @@ class MetricsProcessor:
             self.logger.debug(f"Processing metric: {metric['name']}, type: {metric['type']}")
             if metric["type"] == "scalar":
                 self.process_scalar_metrics(metric)
+            elif metric["type"] == "boolean":
+                self.process_boolean_metrics(metric)
+            elif metric["type"] == "boolean_per_node":
+                self.process_boolean_per_node_metrics(metric)
+            elif metric["type"] == "scalar_per_attribute":
+                self.process_scalar_per_attribute_metrics(metric)
+            # NOTE: These need to be at the end of the elif
             elif metric["type"].endswith("per_node"):
                 self.process_per_node_metrics(metric)
             elif metric["type"].endswith("per_node_per_attribute"):
                 self.process_per_node_per_attribute_metrics(metric)
-            elif metric["type"] == "boolean":
-                self.process_boolean_metrics(metric)
-            elif metric["type"] == "scalar_per_attribute":
-                self.process_scalar_per_attribute_metrics(metric)
-            elif metric["type"] == "boolean_per_node":
-                self.process_boolean_per_node_metrics(metric)
 
     def process_per_node_per_attribute_metrics(self, metric):
         self.logger.debug(f"Processing per_node_per_attribute metrics for {metric['name']}.")
@@ -129,39 +130,14 @@ class MetricsProcessor:
                     for attribute, value in item['metric'].items():
                         if attribute == "":
                             continue
-
-                        if attribute != 'node':
-                            value = value.replace('-', '_').replace('.', '_')
-                            attribute_values.append(value)
-
-                    attribute_key = '_'.join(attribute_values) if attribute_values else 'default'
-                    metric_key = f"{node_name}_{attribute_key}"
-
-                    values = [point[1] for point in item['values']]
-                    if metric_key in self.row_data:
-                        self.row_data[metric_key].extend(values)
-                    else:
-                        self.row_data[metric_key] = values
-
-            else:
-                result = self.prom_api.query(metric["expr"])
-                for item in result:
-                    node_name = self.get_node_map(item['metric']['node'])
-                    attribute_values = []
-
-                    for attribute, value in item['metric'].items():
-                        if attribute == "":
-                            continue
-
-                        if attribute != 'node':
-                            value = value.replace('-', '_').replace('.', '_')
-                            attribute_values.append(value)
-
-                    attribute_key = '_'.join(attribute_values) if attribute_values else 'default'
-                    metric_key = f"{node_name}_{attribute_key}"
-
-                    self.row_data[metric_key] = item['value'][1]
-
+                    # Exclude 'node' attribute because we already consider node in row_data key
+                    if attribute != 'node':
+                        value = value.replace('-','_').replace('.','_')
+                        attribute_values.append(value)
+                # Join all attribute values with underscore to create final attribute name
+                attribute_key = '_'.join(attribute_values) if attribute_values else 'default'
+                              
+                self.row_data[f"{node_name}_{attribute_key}"] = item['value'][1]
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for query {metric['expr']} due to {str(e)}")
 
@@ -217,53 +193,25 @@ class MetricsProcessor:
     def process_boolean_per_node_metrics(self, metric):
         self.logger.debug(f"Processing boolean_per_node metrics for {metric['name']}.")
         try:
-            if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
-
-                for item in results:
-                    if item['metric']['node'] == "":
-                        continue
-
-                    node_name = self.get_node_map(item['metric']['node'])
-                    metric_name = metric['name']
-
-                    # Extract values from the range results
-                    values = ['green' if point[1] == '0' else metric['label'] for point in item['values']]
-                    metric_key = f"{node_name}_{metric_name}"
-
-                    if metric_key in self.row_data:
-                        self.row_data[metric_key].extend(values)
-                    else:
-                        self.row_data[metric_key] = values
-
-            else:
-                result = self.prom_api.query(metric["expr"])
-
-                for item in result:
-                    if item['metric']['node'] == "":
-                        continue
-
-                    node_name = self.get_node_map(item['metric']['node'])
-                    metric_name = metric['name']
-                    value = item["value"][1]
-                    self.row_data[f"{node_name}_{metric_name}"] = 'green' if value == '0' else metric['label']
-
+            result = self.prom_api.query(metric['expr'])
+            for item in result:
+                # skip if empty node entry
+                if item['metric']['node'] == "":
+                    continue
+                node_name = self.get_node_map(item['metric']['node'])
+                metric_name = metric['name']
+                value = result[0]["value"][1]
+                self.row_data[f"{node_name}_{metric_name}"] = False if value == '0' else True
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for {metric['name']} with query {metric['expr']} due to {str(e)}")
 
     def process_boolean_metrics(self, metric):
         self.logger.debug(f"Processing boolean metrics for {metric['name']}.")
         try:
-            if self.query_mode == "range":
-                results = self.prom_api.query_range(metric["expr"], start=self.start_time, end=self.end_time, step=self.interval)
-                # Extract values from the range results
-                values = [point[1] for series in results for point in series['values']]
-                self.row_data[metric["name"]] = values
-            else:
-                result = self.prom_api.query(metric["expr"])
-                if result:
-                    value = result[0]["value"][1]
-                    self.row_data[metric["name"]] = value
+            result = self.prom_api.query(metric["expr"])
+            if result:
+                value = result[0]["value"][1]
+                self.row_data[metric["name"]] = False if value == '0' else True
         except Exception as e:
             self.logger.error(f"[{inspect.stack()[0][3]}] Failed to fetch data for query {metric['expr']} due to {str(e)}")
 

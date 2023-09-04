@@ -1,0 +1,12 @@
+collector:
+  interval: 10 # frequency to execute a collection cycle (seconds)
+
+prometheus:
+  url: "https://${PROMETHEUS_URL}"
+  token: "${TOKEN}"
+  query_sets:
+    - name: base
+      features:
+        - "querysets/ocp-platform/features-definition.yaml"
+      labels:
+        - "querysets/ocp-platform/labels-definition.yaml"
